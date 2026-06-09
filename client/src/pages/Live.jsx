@@ -32,6 +32,7 @@ export default function Live() {
   const queueRef = useRef([]);
   const esRef = useRef(null);
   const chunkCountRef = useRef(0);
+  const skipInitChunkRef = useRef(false); // discard replayed init segment on SSE reconnect
   const [streamStarted, setStreamStarted] = useState(false);
   const [ended, setEnded] = useState(false);
   const [videoError, setVideoError] = useState("");
@@ -104,14 +105,19 @@ export default function Live() {
     function processQueue() {
       const sb = sbRef.current;
       if (!sb || sb.updating || queueRef.current.length === 0) return;
+      if (ms.readyState !== "open") {
+        queueRef.current = [];
+        return;
+      }
       const chunk = queueRef.current.shift();
       try {
         sb.appendBuffer(chunk);
       } catch (e) {
-        queueRef.current.unshift(chunk);
         if (e.name === "QuotaExceededError") {
+          queueRef.current.unshift(chunk);
           cleanBuffer();
         }
+        // Any other error (InvalidStateError, etc.) — discard chunk, don't retry
       }
     }
 
@@ -174,13 +180,24 @@ export default function Live() {
       es.addEventListener("init", (evt) => {
         try {
           const { mimeType } = JSON.parse(evt.data);
+
+          // SSE reconnected after a drop — SourceBuffer already exists.
+          // Don't call addSourceBuffer again (it would throw InvalidStateError).
+          // The next chunk event will replay the stored init segment; skip it.
+          if (sbRef.current) {
+            skipInitChunkRef.current = true;
+            sbReady = true;
+            setVideoError("");
+            return;
+          }
+
           if (!MediaSource.isTypeSupported(mimeType)) {
             setVideoError("Your browser doesn't support this stream format. Try Chrome or Firefox.");
             es.close();
             return;
           }
           const sb = ms.addSourceBuffer(mimeType);
-          // sequence mode tolerates timestamp gaps — better for live streams
+          // sequence mode tolerates timestamp gaps — essential for live streams
           try { sb.mode = "sequence"; } catch {}
           sbRef.current = sb;
           sb.addEventListener("updateend", () => {
@@ -191,12 +208,22 @@ export default function Live() {
           sbReady = true;
           setStreamStarted(true);
         } catch {
-          setVideoError("Failed to initialise stream decoder.");
+          if (!sbRef.current) {
+            setVideoError("Failed to initialise stream decoder.");
+          }
         }
       });
 
       es.addEventListener("chunk", (evt) => {
         if (!sbReady) return;
+
+        // Discard the replayed init segment sent after an SSE reconnect.
+        // Appending the WebM header onto an existing SourceBuffer corrupts the stream.
+        if (skipInitChunkRef.current) {
+          skipInitChunkRef.current = false;
+          return;
+        }
+
         chunkCountRef.current++;
         queueRef.current.push(base64ToUint8Array(evt.data));
         processQueue();
@@ -204,6 +231,8 @@ export default function Live() {
         if (chunkCountRef.current % 20 === 0) cleanBuffer();
         stayAtLiveEdge();
         tryPlay();
+        // Clear any transient error overlay once chunks are flowing again
+        setVideoError((prev) => (prev ? "" : prev));
       });
 
       es.addEventListener("ended", () => {
