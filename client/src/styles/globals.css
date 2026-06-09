@@ -159,7 +159,7 @@ body {
 .video-grid {
   display: grid;
   gap: 40px 16px;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .signal-lab {
@@ -3709,6 +3709,46 @@ body {
   background: #b91c1c !important;
 }
 
+.live-stream-share-row {
+  display: grid;
+  gap: 0;
+}
+
+.live-stream-share-row > label {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.live-encoder-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 6px;
+  padding: 8px 12px;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.live-encoder-toggle:hover {
+  background: var(--youtube-hover);
+  color: var(--color-text);
+}
+
+.live-encoder-hint {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
 .youtube-signin-button {
   background: transparent;
   border: 1px solid var(--color-border);
@@ -5136,6 +5176,14 @@ body {
 }
 
 /* ─── Extra small screens (≤480px) ─────────────────────────── */
+
+@media (max-width: 680px) {
+  /* Two-column grid on small phones before going single */
+  .video-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px 10px;
+  }
+}
 
 @media (max-width: 480px) {
   /* Single-column video grid on very small screens */

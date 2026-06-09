@@ -55,9 +55,13 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
   const moreMenuRef = useRef(null);
   const notificationRef = useRef(null);
   const webcamRef = useRef(null);
+  const screenPreviewRef = useRef(null);
   const webcamStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const audioCtxRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const mimeTypeRef = useRef("video/webm;codecs=vp8,opus");
+  const [showEncoderDetails, setShowEncoderDetails] = useState(false);
 
   const [viewerCount, setViewerCount] = useState(0);
 
@@ -142,8 +146,9 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
     setCreateStatus("");
     setLiveRoom(null);
     setLiveStep(1);
-    setLiveMethod("encoder");
+    setLiveMethod("webcam");
     setKeyVisible(false);
+    setShowEncoderDetails(false);
     setCreatorTool(tool);
   }
 
@@ -194,6 +199,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
         setLiveStep(3);
         setCreateStatus("");
         if (liveMethod === "webcam") startWebcam(room);
+        else if (liveMethod === "software") startScreenShare(room);
         // Connect to chat SSE so broadcaster sees viewer messages
         const chatEs = new EventSource(`/api/live/${room.id}/chat/stream`);
         chatEsRef.current = chatEs;
@@ -213,12 +219,68 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
 
   async function startWebcam(roomOverride) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: { ideal: 48000 }
+        }
+      });
       webcamStreamRef.current = stream;
       if (webcamRef.current) webcamRef.current.srcObject = stream;
       startMediaRecorder(stream, roomOverride);
     } catch {
-      setCreateStatus("Camera access was denied. You can still stream using encoding software with the details below.");
+      setCreateStatus("Camera access was denied. Try screen share instead, or use an encoder with the details below.");
+    }
+  }
+
+  async function startScreenShare(roomOverride) {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30 }, cursor: "always" },
+        audio: true
+      });
+      screenStreamRef.current = screenStream;
+
+      // Try to mix in microphone for voice commentary
+      let finalStream = screenStream;
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        const audioCtx = new AudioContext();
+        audioCtxRef.current = audioCtx;
+        const dest = audioCtx.createMediaStreamDestination();
+        if (screenStream.getAudioTracks().length > 0) {
+          audioCtx.createMediaStreamSource(new MediaStream(screenStream.getAudioTracks())).connect(dest);
+        }
+        audioCtx.createMediaStreamSource(micStream).connect(dest);
+        finalStream = new MediaStream([...screenStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+      } catch {
+        // Mic denied — stream screen video + system audio only
+      }
+
+      webcamStreamRef.current = finalStream;
+      if (screenPreviewRef.current) screenPreviewRef.current.srcObject = screenStream;
+      startMediaRecorder(finalStream, roomOverride);
+
+      // Auto-stop if user ends share via browser UI
+      screenStream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        endLive();
+      });
+    } catch (err) {
+      if (err?.name === "NotAllowedError") {
+        setCreateStatus("Screen capture cancelled. Choose webcam or click 'Set up stream' again.");
+      } else {
+        setCreateStatus("Could not start screen capture. Use Chrome or Firefox.");
+      }
     }
   }
 
@@ -235,7 +297,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
     if (!mimeType) { setCreateStatus("Your browser does not support WebM recording. Use OBS with the stream key below."); return; }
     mimeTypeRef.current = mimeType;
 
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 600_000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2_500_000, audioBitsPerSecond: 128_000 });
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (event) => {
@@ -262,6 +324,10 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
     mediaRecorderRef.current = null;
     webcamStreamRef.current?.getTracks().forEach((t) => t.stop());
     webcamStreamRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
   }
 
   async function endLive() {
@@ -621,22 +687,28 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
                 {liveStep === 1 ? (
                   <div className="live-method-grid">
                     <button
-                      className={liveMethod === "encoder" ? "live-method-card active" : "live-method-card"}
-                      type="button"
-                      onClick={() => setLiveMethod("encoder")}
-                    >
-                      <YoutubeIcon name="trending" size={30} />
-                      <strong>Streaming software</strong>
-                      <small>OBS, Streamlabs, or any RTMP encoder</small>
-                    </button>
-                    <button
                       className={liveMethod === "webcam" ? "live-method-card active" : "live-method-card"}
                       type="button"
                       onClick={() => setLiveMethod("webcam")}
                     >
-                      <YoutubeIcon name="upload" size={30} />
+                      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M23 7 16 12l7 5V7z" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" />
+                      </svg>
                       <strong>Webcam</strong>
-                      <small>Go live directly from your browser</small>
+                      <small>Go live from your camera and mic</small>
+                    </button>
+                    <button
+                      className={liveMethod === "software" ? "live-method-card active" : "live-method-card"}
+                      type="button"
+                      onClick={() => setLiveMethod("software")}
+                    >
+                      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <path d="M8 21h8M12 17v4" />
+                      </svg>
+                      <strong>Screen Share</strong>
+                      <small>Share your screen, app, or game window</small>
                     </button>
                   </div>
                 ) : null}
@@ -687,6 +759,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
                 {/* Step 3 – stream setup */}
                 {liveStep === 3 && liveRoom ? (
                   <div className="live-stream-setup">
+                    {/* Webcam preview */}
                     {liveMethod === "webcam" ? (
                       <div className="live-webcam-preview">
                         <video ref={webcamRef} autoPlay muted playsInline />
@@ -694,35 +767,75 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
                       </div>
                     ) : null}
 
+                    {/* Screen share preview */}
+                    {liveMethod === "software" ? (
+                      <div className="live-webcam-preview">
+                        <video ref={screenPreviewRef} autoPlay muted playsInline />
+                        <span className="live-webcam-badge">LIVE</span>
+                      </div>
+                    ) : null}
+
+                    {/* Status bar */}
                     <div className="live-health">
                       <span className="live-health-dot" />
-                      {liveMethod === "webcam" ? `Live · ${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"} watching` : "Stream ready — connect your encoder to go live"}
+                      {liveMethod === "webcam"
+                        ? `Live · ${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"} watching`
+                        : liveMethod === "software"
+                        ? `Sharing screen · ${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"} watching`
+                        : `Waiting for encoder · ${viewerCount} ${viewerCount === 1 ? "viewer" : "viewers"} watching`}
                     </div>
 
-                    <div className="live-stream-setup-fields">
-                      <label>
-                        Server URL
-                        <div className="live-key-row">
-                          <input readOnly value={liveRoom.ingestUrl} />
-                          <button type="button" onClick={() => copyText(liveRoom.ingestUrl)}>Copy</button>
-                        </div>
-                      </label>
-                      <label>
-                        Stream key
-                        <div className="live-key-row">
-                          <input readOnly type={keyVisible ? "text" : "password"} value={liveRoom.streamKey} />
-                          <button type="button" onClick={() => setKeyVisible((v) => !v)}>{keyVisible ? "Hide" : "Show"}</button>
-                          <button type="button" onClick={() => copyText(liveRoom.streamKey)}>Copy</button>
-                        </div>
-                      </label>
-                      <label>
-                        Share link
-                        <div className="live-key-row">
-                          <input readOnly value={`${window.location.origin}/live?id=${liveRoom.id}`} />
-                          <button type="button" onClick={() => copyText(`${window.location.origin}/live?id=${liveRoom.id}`)}>Copy</button>
-                        </div>
-                      </label>
+                    {/* Share link – always visible */}
+                    <div className="live-stream-share-row">
+                      <label>Share link</label>
+                      <div className="live-key-row">
+                        <input readOnly value={`${window.location.origin}/live?id=${liveRoom.id}`} />
+                        <button type="button" onClick={() => copyText(`${window.location.origin}/live?id=${liveRoom.id}`)}>Copy</button>
+                      </div>
                     </div>
+
+                    {/* Collapsible encoder / advanced section */}
+                    <button
+                      type="button"
+                      className="live-encoder-toggle"
+                      onClick={() => setShowEncoderDetails((v) => !v)}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points={showEncoderDetails ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+                      </svg>
+                      Use an encoder (OBS / Streamlabs / ffmpeg)
+                    </button>
+
+                    {showEncoderDetails ? (
+                      <div className="live-stream-setup-fields">
+                        <p className="live-encoder-hint">
+                          Open OBS → Settings → Stream → Custom RTMP, or paste the HTTP URL into ffmpeg.
+                          The stream key authenticates your connection.
+                        </p>
+                        <label>
+                          Ingest URL
+                          <div className="live-key-row">
+                            <input readOnly value={`${window.location.origin}/api/live/${liveRoom.id}/chunk`} />
+                            <button type="button" onClick={() => copyText(`${window.location.origin}/api/live/${liveRoom.id}/chunk`)}>Copy</button>
+                          </div>
+                        </label>
+                        <label>
+                          Stream key
+                          <div className="live-key-row">
+                            <input readOnly type={keyVisible ? "text" : "password"} value={liveRoom.streamKey} />
+                            <button type="button" onClick={() => setKeyVisible((v) => !v)}>{keyVisible ? "Hide" : "Show"}</button>
+                            <button type="button" onClick={() => copyText(liveRoom.streamKey)}>Copy</button>
+                          </div>
+                        </label>
+                        <label>
+                          ffmpeg one-liner
+                          <div className="live-key-row">
+                            <input readOnly value={`ffmpeg -re -i input.mp4 -c:v libvpx -c:a libopus -f webm -headers "Authorization: Bearer ${liveRoom.streamKey}" "${window.location.origin}/api/live/${liveRoom.id}/chunk"`} />
+                            <button type="button" onClick={() => copyText(`ffmpeg -re -i input.mp4 -c:v libvpx -c:a libopus -f webm -headers "Authorization: Bearer ${liveRoom.streamKey}" "${window.location.origin}/api/live/${liveRoom.id}/chunk"`)}>Copy</button>
+                          </div>
+                        </label>
+                      </div>
+                    ) : null}
 
                     {/* Broadcaster live chat */}
                     <div className="broadcaster-chat">
