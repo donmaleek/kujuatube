@@ -22,10 +22,11 @@ export default function Live() {
   const videoRef = useRef(null);
   const msRef = useRef(null);
   const sbRef = useRef(null);
-  const queueRef = useRef([]);          // pending Uint8Array chunks to append
-  const fetchQueueRef = useRef(Promise.resolve()); // serialises segment fetches
-  const lastSeqRef = useRef(-1);        // highest seq number scheduled for fetch
-  const sbReadyRef = useRef(false);     // true once SourceBuffer is initialised
+  const queueRef = useRef([]);              // Uint8Array chunks waiting to be appended
+  const fetchResultsRef = useRef(new Map()); // seq -> Promise<Uint8Array|null>
+  const fetchQueueRef = useRef(Promise.resolve()); // orders SourceBuffer appends
+  const lastSeqRef = useRef(-1);            // highest seq scheduled for fetch
+  const sbReadyRef = useRef(false);
   const esRef = useRef(null);
 
   const [streamStarted, setStreamStarted] = useState(false);
@@ -124,8 +125,11 @@ export default function Live() {
         const buf = sb.buffered;
         if (buf.length === 0) return;
         const edge = buf.end(buf.length - 1);
-        if (edge - videoEl.currentTime > 4) {
-          videoEl.currentTime = Math.max(edge - 1.5, buf.start(0));
+        // Only snap to live if extremely far behind (>15s). Keep 5s of lookahead.
+        // Aggressive seeking is the #1 cause of repeated pause/play cycles — it
+        // drops us right at the edge with no buffer, causing immediate underruns.
+        if (edge - videoEl.currentTime > 15) {
+          videoEl.currentTime = Math.max(edge - 5, buf.start(0));
         }
       } catch {}
     }
@@ -137,41 +141,39 @@ export default function Live() {
       try {
         const buf = sb.buffered;
         if (buf.length === 0) return;
-        if (buf.end(buf.length - 1) - buf.start(0) >= 1.5) videoEl.play().catch(() => {});
+        // 1s threshold — enough to play smoothly without waiting for 2 full chunks
+        if (buf.end(buf.length - 1) - buf.start(0) >= 1.0) videoEl.play().catch(() => {});
       } catch {}
     }
 
+    // When the video stalls, don't seek — just let the next fetch refill the buffer.
+    // Seeking on "waiting" can jump past data that's already in-flight.
     function handleWaiting() {
-      const sb = sbRef.current;
-      if (!sb) return;
-      try {
-        const buf = sb.buffered;
-        for (let i = 0; i < buf.length; i++) {
-          if (buf.end(i) > videoEl.currentTime + 0.5) {
-            if (videoEl.currentTime < buf.start(i)) videoEl.currentTime = buf.start(i);
-            videoEl.play().catch(() => {});
-            break;
-          }
-        }
-      } catch {}
+      videoEl.play().catch(() => {});
     }
 
     videoEl.addEventListener("waiting", handleWaiting);
 
-    // Fetch one segment and push it onto the SourceBuffer queue.
-    // All calls are chained through fetchQueueRef so data arrives in order.
+    // Fetch a segment. All fetches start immediately (parallel downloads).
+    // The SourceBuffer append is chained in strict seq order so clusters are
+    // written correctly even when the network delivers them out of order.
     function schedFetch(seq) {
+      // Kick off the HTTP request right now — don't wait for previous fetch
+      fetchResultsRef.current.set(
+        seq,
+        fetch(`${API_BASE_URL}/api/live/${liveId}/segment/${seq}`)
+          .then((r) => (r.ok ? r.arrayBuffer().then((b) => new Uint8Array(b)) : null))
+          .catch(() => null)
+      );
+      // Append to SourceBuffer in declaration order (sequential)
       fetchQueueRef.current = fetchQueueRef.current.then(async () => {
-        if (ms.readyState !== "open") return;
-        try {
-          const resp = await fetch(`${API_BASE_URL}/api/live/${liveId}/segment/${seq}`);
-          if (!resp.ok) return;
-          const data = new Uint8Array(await resp.arrayBuffer());
-          if (sbRef.current && ms.readyState === "open") {
-            queueRef.current.push(data);
-            processQueue();
-          }
-        } catch {}
+        const promise = fetchResultsRef.current.get(seq);
+        if (!promise) return;
+        const data = await promise;
+        fetchResultsRef.current.delete(seq);
+        if (!data || !sbRef.current || ms.readyState !== "open") return;
+        queueRef.current.push(data);
+        processQueue();
       });
     }
 

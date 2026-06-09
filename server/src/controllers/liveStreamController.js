@@ -1,6 +1,6 @@
 // roomId → { mimeType, initChunk, chunks[], nextSeq, clients, chatClients, messages, title, channelName, createdAt }
 const rooms = new Map();
-const MAX_CHUNKS = 60; // ~60 seconds at 1 chunk/sec
+const MAX_CHUNKS = 120; // ~60 seconds at 2 chunks/sec (500ms MediaRecorder timeslice)
 
 export function ensureRoom(liveId, meta = {}) {
   if (!rooms.has(liveId)) {

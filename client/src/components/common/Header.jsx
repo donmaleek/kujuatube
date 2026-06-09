@@ -321,7 +321,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
       }).catch(() => {});
     };
 
-    recorder.start(1000); // 1s chunks — smaller payload, lower latency
+    recorder.start(500); // 500ms chunks — finer granularity, smoother buffer fill
   }
 
   function stopWebcam() {
