@@ -316,6 +316,8 @@ export function publicUser(user) {
   if (!user) return null;
   const { passwordHash, ...safeUser } = user;
   return {
+    bannerUrl: "",
+    channelHandle: "",
     ...safeUser,
     subscribers: db.subscriptions.filter((s) => s.channelId === user.id).length
   };
