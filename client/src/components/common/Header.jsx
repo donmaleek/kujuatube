@@ -30,7 +30,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
   const [postDraft, setPostDraft] = useState({ body: "", visibility: "public" });
 
   const [liveStep, setLiveStep] = useState(1);
-  const [liveMethod, setLiveMethod] = useState("encoder");
+  const [liveMethod, setLiveMethod] = useState("webcam");
   const [liveDraft, setLiveDraft] = useState({
     title: "", description: "", visibility: "public",
     category: "Education", audience: "not_kids", thumbnail: ""
@@ -41,6 +41,7 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
   const [chatInput, setChatInput] = useState("");
   const chatEsRef = useRef(null);
   const chatScrollRef = useRef(null);
+  const seenChatIdsRef = useRef(new Set());
 
   const [launchIdea, setLaunchIdea] = useState("");
   const [launchKit, setLaunchKit] = useState(null);
@@ -149,6 +150,8 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
     setLiveMethod("webcam");
     setKeyVisible(false);
     setShowEncoderDetails(false);
+    setChatMessages([]);
+    seenChatIdsRef.current = new Set();
     setCreatorTool(tool);
   }
 
@@ -206,6 +209,8 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
         chatEs.addEventListener("message", (evt) => {
           try {
             const msg = JSON.parse(evt.data);
+            if (seenChatIdsRef.current.has(msg.id)) return;
+            seenChatIdsRef.current.add(msg.id);
             setChatMessages((prev) => [...prev, msg].slice(-100));
           } catch {}
         });

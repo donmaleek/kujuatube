@@ -3,13 +3,6 @@ import { API_BASE_URL } from "../utils/constants.js";
 import { apiRequest } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 
-function base64ToUint8Array(b64) {
-  const bin = atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return arr;
-}
-
 function getAnonName() {
   try {
     const stored = localStorage.getItem("kujuatime-viewer-name");
@@ -29,16 +22,19 @@ export default function Live() {
   const videoRef = useRef(null);
   const msRef = useRef(null);
   const sbRef = useRef(null);
-  const queueRef = useRef([]);
+  const queueRef = useRef([]);          // pending Uint8Array chunks to append
+  const fetchQueueRef = useRef(Promise.resolve()); // serialises segment fetches
+  const lastSeqRef = useRef(-1);        // highest seq number scheduled for fetch
+  const sbReadyRef = useRef(false);     // true once SourceBuffer is initialised
   const esRef = useRef(null);
-  const chunkCountRef = useRef(0);
-  const skipInitChunkRef = useRef(false); // discard replayed init segment on SSE reconnect
+
   const [streamStarted, setStreamStarted] = useState(false);
   const [ended, setEnded] = useState(false);
   const [videoError, setVideoError] = useState("");
-
   const [info, setInfo] = useState({ title: "", channelName: "", viewerCount: 0 });
 
+  // Chat — use a Set to deduplicate replayed messages on SSE reconnect
+  const seenMsgIds = useRef(new Set());
   const chatEsRef = useRef(null);
   const chatBottomRef = useRef(null);
   const [messages, setMessages] = useState([]);
@@ -47,6 +43,7 @@ export default function Live() {
 
   const displayName = user?.name || getAnonName();
 
+  // ── Stream metadata poll ──────────────────────────────
   useEffect(() => {
     if (!liveId) return;
     const load = () =>
@@ -59,6 +56,7 @@ export default function Live() {
     return () => window.clearInterval(id);
   }, [liveId]);
 
+  // ── Chat SSE ──────────────────────────────────────────
   useEffect(() => {
     if (!liveId) return;
     const es = new EventSource(`${API_BASE_URL}/api/live/${liveId}/chat/stream`);
@@ -66,6 +64,9 @@ export default function Live() {
     es.addEventListener("message", (evt) => {
       try {
         const msg = JSON.parse(evt.data);
+        // Deduplicate: server replays last 50 messages on every SSE reconnect
+        if (seenMsgIds.current.has(msg.id)) return;
+        seenMsgIds.current.add(msg.id);
         setMessages((prev) => [...prev, msg].slice(-200));
       } catch {}
     });
@@ -77,6 +78,7 @@ export default function Live() {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ── Video playback ────────────────────────────────────
   useEffect(() => {
     if (!liveId) return;
     const videoEl = videoRef.current;
@@ -87,80 +89,66 @@ export default function Live() {
     const objUrl = URL.createObjectURL(ms);
     videoEl.src = objUrl;
 
-    // Remove buffered data behind currentTime to prevent QuotaExceededError
     function cleanBuffer() {
       const sb = sbRef.current;
       if (!sb || sb.updating) return;
       try {
-        const buffered = sb.buffered;
-        if (buffered.length === 0) return;
-        const bufStart = buffered.start(0);
+        const buf = sb.buffered;
+        if (buf.length === 0) return;
         const removeUntil = videoEl.currentTime - 30;
-        if (removeUntil > bufStart + 1) {
-          sb.remove(bufStart, removeUntil);
-        }
+        if (removeUntil > buf.start(0) + 1) sb.remove(buf.start(0), removeUntil);
       } catch {}
     }
 
+    // Drain the pending-data queue into the SourceBuffer
     function processQueue() {
       const sb = sbRef.current;
       if (!sb || sb.updating || queueRef.current.length === 0) return;
-      if (ms.readyState !== "open") {
-        queueRef.current = [];
-        return;
-      }
-      const chunk = queueRef.current.shift();
+      if (ms.readyState !== "open") { queueRef.current = []; return; }
+      const data = queueRef.current.shift();
       try {
-        sb.appendBuffer(chunk);
+        sb.appendBuffer(data);
       } catch (e) {
         if (e.name === "QuotaExceededError") {
-          queueRef.current.unshift(chunk);
+          queueRef.current.unshift(data);
           cleanBuffer();
         }
-        // Any other error (InvalidStateError, etc.) — discard chunk, don't retry
+        // Any other error: discard chunk and continue
       }
     }
 
-    // Keep video within 3s of the live edge; seek forward if too far behind
     function stayAtLiveEdge() {
       const sb = sbRef.current;
       if (!sb || sb.updating) return;
       try {
-        const buffered = sb.buffered;
-        if (buffered.length === 0) return;
-        const liveEdge = buffered.end(buffered.length - 1);
-        if (liveEdge - videoEl.currentTime > 4) {
-          videoEl.currentTime = Math.max(liveEdge - 1, buffered.start(0));
+        const buf = sb.buffered;
+        if (buf.length === 0) return;
+        const edge = buf.end(buf.length - 1);
+        if (edge - videoEl.currentTime > 4) {
+          videoEl.currentTime = Math.max(edge - 1.5, buf.start(0));
         }
       } catch {}
     }
 
-    // Start playback once we have 1.5s buffered
     function tryPlay() {
       if (!videoEl.paused) return;
       const sb = sbRef.current;
       if (!sb) return;
       try {
-        const buffered = sb.buffered;
-        if (buffered.length === 0) return;
-        const buffDuration = buffered.end(buffered.length - 1) - buffered.start(0);
-        if (buffDuration >= 1.5) {
-          videoEl.play().catch(() => {});
-        }
+        const buf = sb.buffered;
+        if (buf.length === 0) return;
+        if (buf.end(buf.length - 1) - buf.start(0) >= 1.5) videoEl.play().catch(() => {});
       } catch {}
     }
 
-    // When video stalls and there is already buffered data ahead, seek into it
     function handleWaiting() {
       const sb = sbRef.current;
       if (!sb) return;
       try {
-        const buffered = sb.buffered;
-        for (let i = 0; i < buffered.length; i++) {
-          const end = buffered.end(i);
-          const start = buffered.start(i);
-          if (end > videoEl.currentTime + 0.5) {
-            if (videoEl.currentTime < start) videoEl.currentTime = start;
+        const buf = sb.buffered;
+        for (let i = 0; i < buf.length; i++) {
+          if (buf.end(i) > videoEl.currentTime + 0.5) {
+            if (videoEl.currentTime < buf.start(i)) videoEl.currentTime = buf.start(i);
             videoEl.play().catch(() => {});
             break;
           }
@@ -170,69 +158,100 @@ export default function Live() {
 
     videoEl.addEventListener("waiting", handleWaiting);
 
+    // Fetch one segment and push it onto the SourceBuffer queue.
+    // All calls are chained through fetchQueueRef so data arrives in order.
+    function schedFetch(seq) {
+      fetchQueueRef.current = fetchQueueRef.current.then(async () => {
+        if (ms.readyState !== "open") return;
+        try {
+          const resp = await fetch(`${API_BASE_URL}/api/live/${liveId}/segment/${seq}`);
+          if (!resp.ok) return;
+          const data = new Uint8Array(await resp.arrayBuffer());
+          if (sbRef.current && ms.readyState === "open") {
+            queueRef.current.push(data);
+            processQueue();
+          }
+        } catch {}
+      });
+    }
+
     ms.addEventListener("sourceopen", () => {
       try { ms.duration = Infinity; } catch {}
 
       const es = new EventSource(`${API_BASE_URL}/api/live/${liveId}/stream`);
       esRef.current = es;
-      let sbReady = false;
 
-      es.addEventListener("init", (evt) => {
+      // ── init event: stream started or SSE reconnected ────────
+      es.addEventListener("init", async (evt) => {
         try {
-          const { mimeType } = JSON.parse(evt.data);
+          const { mimeType, sequences } = JSON.parse(evt.data);
 
-          // SSE reconnected after a drop — SourceBuffer already exists.
-          // Don't call addSourceBuffer again (it would throw InvalidStateError).
-          // The next chunk event will replay the stored init segment; skip it.
           if (sbRef.current) {
-            skipInitChunkRef.current = true;
-            sbReady = true;
+            // SSE reconnected — SourceBuffer already set up.
+            // Fetch any segments we missed during the gap.
+            sbReadyRef.current = true;
             setVideoError("");
+            const missed = sequences.filter((s) => s > lastSeqRef.current);
+            missed.forEach((seq) => {
+              lastSeqRef.current = seq;
+              schedFetch(seq);
+            });
             return;
           }
 
           if (!MediaSource.isTypeSupported(mimeType)) {
-            setVideoError("Your browser doesn't support this stream format. Try Chrome or Firefox.");
+            setVideoError("Browser doesn't support this format. Use Chrome or Firefox.");
             es.close();
             return;
           }
+
+          // Fetch the WebM initialization segment (EBML header + tracks)
+          const initResp = await fetch(`${API_BASE_URL}/api/live/${liveId}/init`);
+          if (!initResp.ok) { setVideoError("Stream initialisation failed — try refreshing."); return; }
+          const initData = new Uint8Array(await initResp.arrayBuffer());
+
           const sb = ms.addSourceBuffer(mimeType);
-          // sequence mode tolerates timestamp gaps — essential for live streams
           try { sb.mode = "sequence"; } catch {}
           sbRef.current = sb;
+
+          let appendCount = 0;
           sb.addEventListener("updateend", () => {
             processQueue();
             tryPlay();
             stayAtLiveEdge();
+            appendCount++;
+            if (appendCount % 20 === 0) cleanBuffer();
           });
-          sbReady = true;
+
+          // Init data goes first so the SourceBuffer knows the codec/tracks
+          queueRef.current.push(initData);
+          processQueue();
+
+          sbReadyRef.current = true;
           setStreamStarted(true);
+
+          // Catch up: fetch the most recent available segments (last 5 ≈ 5s)
+          const catchup = sequences.slice(-5);
+          catchup.forEach((seq) => {
+            lastSeqRef.current = seq;
+            schedFetch(seq);
+          });
         } catch {
-          if (!sbRef.current) {
-            setVideoError("Failed to initialise stream decoder.");
-          }
+          if (!sbRef.current) setVideoError("Failed to initialise stream decoder.");
         }
       });
 
-      es.addEventListener("chunk", (evt) => {
-        if (!sbReady) return;
-
-        // Discard the replayed init segment sent after an SSE reconnect.
-        // Appending the WebM header onto an existing SourceBuffer corrupts the stream.
-        if (skipInitChunkRef.current) {
-          skipInitChunkRef.current = false;
-          return;
-        }
-
-        chunkCountRef.current++;
-        queueRef.current.push(base64ToUint8Array(evt.data));
-        processQueue();
-        // Proactively clean old data every 20 chunks (~20s at 1s/chunk)
-        if (chunkCountRef.current % 20 === 0) cleanBuffer();
-        stayAtLiveEdge();
-        tryPlay();
-        // Clear any transient error overlay once chunks are flowing again
-        setVideoError((prev) => (prev ? "" : prev));
+      // ── segment event: new cluster available, fetch it ───────
+      es.addEventListener("segment", (evt) => {
+        if (!sbReadyRef.current) return;
+        try {
+          const { seq } = JSON.parse(evt.data);
+          if (seq <= lastSeqRef.current) return; // already scheduled
+          lastSeqRef.current = seq;
+          schedFetch(seq);
+          // Clear any transient error once data is flowing again
+          setVideoError((prev) => (prev ? "" : prev));
+        } catch {}
       });
 
       es.addEventListener("ended", () => {
@@ -254,6 +273,7 @@ export default function Live() {
     };
   }, [liveId]);
 
+  // ── Send chat ──────────────────────────────────────────
   async function sendChat(e) {
     e?.preventDefault();
     const text = chatInput.trim();
