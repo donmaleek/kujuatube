@@ -1,0 +1,44 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.client
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.server
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: production
+      UPLOAD_DIR: /tmp/kujuatime/uploads
+      DATA_FILE: /tmp/kujuatime/data/kujuatime.json
+    volumes:
+      - uploads:/tmp/kujuatime/uploads
+      - data:/tmp/kujuatime/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - client
+      - server
+
+volumes:
+  uploads:
+  data:

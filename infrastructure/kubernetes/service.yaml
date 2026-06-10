@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kujuatime-server
+spec:
+  selector:
+    app: kujuatime-server
+  ports:
+    - port: 80
+      targetPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kujuatime-client
+spec:
+  selector:
+    app: kujuatime-client
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kujuatime-nginx
+spec:
+  selector:
+    app: kujuatime-nginx
+  ports:
+    - port: 80
+      targetPort: 80

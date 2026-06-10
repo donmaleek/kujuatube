@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kujuatime-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kujuatime-server
+  template:
+    metadata:
+      labels:
+        app: kujuatime-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/your-org/kujuatime-server:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "5000"
+            - name: CORS_ORIGIN
+              value: https://kujuatime.example
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kujuatime-secrets
+                  key: jwt-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kujuatime-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kujuatime-client
+  template:
+    metadata:
+      labels:
+        app: kujuatime-client
+    spec:
+      containers:
+        - name: client
+          image: ghcr.io/your-org/kujuatime-client:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kujuatime-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kujuatime-nginx
+  template:
+    metadata:
+      labels:
+        app: kujuatime-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: ghcr.io/your-org/kujuatime-nginx:latest
+          ports:
+            - containerPort: 80

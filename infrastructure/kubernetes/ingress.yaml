@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kujuatime
+spec:
+  rules:
+    - host: kujuatime.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kujuatime-nginx
+                port:
+                  number: 80

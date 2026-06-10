@@ -76,9 +76,11 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
   const videoRef = useRef(null);
   const settingsRef = useRef(null);
   const settingsButtonRef = useRef(null);
-  const { activeVideo, isMiniPlayerOpen, openMiniPlayer, playbackState, syncPlayback } = usePlayer();
+  const { activeVideo, isMiniPlayerOpen, miniVideo, miniPlaybackState, openMiniPlayer, playbackState, syncPlayback } = usePlayer();
   const previousVolumeRef = useRef(playbackState.volume || 0.82);
   const isContextVideo = activeVideo?.id === video?.id;
+  // isMiniVideo: the mini player is currently playing THIS video
+  const isMiniVideo = miniVideo?.id === video?.id;
   const [playing, setPlaying] = useState(isContextVideo ? playbackState.playing : false);
   const [currentTime, setCurrentTime] = useState(isContextVideo ? playbackState.currentTime : 0);
   const [volume, setVolume] = useState(playbackState.volume || 0.82);
@@ -119,7 +121,8 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     setSettingsOpen(false);
     if (isContextVideo) {
       setCurrentTime(playbackState.currentTime || 0);
-      setPlaying(playbackState.playing && !isMiniPlayerOpen);
+      // Don't resume playing in the main player if mini player is showing this video
+      setPlaying(playbackState.playing && !isMiniVideo);
       setVolume(playbackState.volume || 0.82);
       setMuted(Boolean(playbackState.muted));
       setSpeed(playbackState.speed || 1);
@@ -214,9 +217,18 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
   }, [video?.id]);
 
   useEffect(() => {
-    if (!video || (isMiniPlayerOpen && isContextVideo)) return;
+    // Always sync main player state — mini player uses separate miniPlaybackState
+    if (!video) return;
     syncPlayback(video, { currentTime, duration, loop, muted, playing, speed, volume });
-  }, [currentTime, duration, isContextVideo, isMiniPlayerOpen, loop, muted, playing, speed, syncPlayback, video, volume]);
+  }, [currentTime, duration, loop, muted, playing, speed, syncPlayback, video, volume]);
+
+  // Pause main player when mini player opens for this same video (avoid double audio)
+  useEffect(() => {
+    if (!isMiniPlayerOpen || !isMiniVideo) return;
+    const videoNode = videoRef.current;
+    if (videoNode) videoNode.pause();
+    setPlaying(false);
+  }, [isMiniPlayerOpen, isMiniVideo]);
 
   useEffect(() => {
     if (hasMedia || !playing) return undefined;
@@ -267,8 +279,31 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     }
   }
 
+  // Pause main player immediately when mini player takes over this video
   useEffect(() => {
-    if (!video || !autoStart || (isMiniPlayerOpen && isContextVideo)) return undefined;
+    if (isMiniPlayerOpen && isMiniVideo && hasMedia) {
+      videoRef.current?.pause();
+      setPlaying(false);
+    }
+  }, [isMiniPlayerOpen, isMiniVideo, hasMedia]);
+
+  // When mini player closes for this video, resume from its last timestamp
+  useEffect(() => {
+    if (!isMiniPlayerOpen && isMiniVideo && video && hasMedia) {
+      const resumeTime = miniPlaybackState.currentTime;
+      const videoNode = videoRef.current;
+      if (videoNode && Number.isFinite(resumeTime) && resumeTime > 0) {
+        videoNode.currentTime = resumeTime;
+        setCurrentTime(resumeTime);
+      }
+      startMediaPlayback({ allowMutedFallback: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMiniPlayerOpen]);
+
+  useEffect(() => {
+    // Don't start the main player if the mini player is already playing this video
+    if (!video || !autoStart || (isMiniPlayerOpen && isMiniVideo)) return undefined;
 
     let cancelled = false;
 
@@ -294,7 +329,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     return () => {
       cancelled = true;
     };
-  }, [autoStart, hasMedia, isContextVideo, isMiniPlayerOpen, video?.id]);
+  }, [autoStart, hasMedia, isMiniVideo, isMiniPlayerOpen, video?.id]);
 
   async function togglePlay() {
     if (!hasMedia) {

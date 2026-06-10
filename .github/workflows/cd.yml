@@ -1,0 +1,27 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: docker build -f infrastructure/docker/Dockerfile.server -t ghcr.io/${{ github.repository }}/server:${{ github.ref_name }} .
+      - run: docker build -f infrastructure/docker/Dockerfile.client -t ghcr.io/${{ github.repository }}/client:${{ github.ref_name }} .
+      - run: docker build -f infrastructure/docker/Dockerfile.nginx -t ghcr.io/${{ github.repository }}/nginx:${{ github.ref_name }} .
+      - run: docker push ghcr.io/${{ github.repository }}/server:${{ github.ref_name }}
+      - run: docker push ghcr.io/${{ github.repository }}/client:${{ github.ref_name }}
+      - run: docker push ghcr.io/${{ github.repository }}/nginx:${{ github.ref_name }}

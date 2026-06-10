@@ -20,35 +20,38 @@ function parseDuration(value = "8:42") {
 export default function MiniPlayer() {
   const videoRef = useRef(null);
   const {
-    activeVideo,
     closeMiniPlayer,
     hideMiniPlayer,
     isMiniPlayerOpen,
-    playbackState,
-    syncPlayback
+    miniPlaybackState,
+    miniVideo,
+    syncMiniPlayback
   } = usePlayer();
-  const [currentTime, setCurrentTime] = useState(playbackState.currentTime || 0);
+
+  const [currentTime, setCurrentTime] = useState(miniPlaybackState.currentTime || 0);
   const duration = useMemo(
-    () => playbackState.duration || parseDuration(activeVideo?.duration),
-    [activeVideo?.duration, playbackState.duration]
+    () => miniPlaybackState.duration || parseDuration(miniVideo?.duration),
+    [miniVideo?.duration, miniPlaybackState.duration]
   );
-  const hasMedia = Boolean(activeVideo?.videoUrl);
+  const hasMedia = Boolean(miniVideo?.videoUrl);
   const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
 
+  // Sync current time when mini player opens for a new video
   useEffect(() => {
-    if (!activeVideo) return;
-    setCurrentTime(Math.min(playbackState.currentTime || 0, duration));
-  }, [activeVideo?.id]);
+    if (!miniVideo) return;
+    setCurrentTime(Math.min(miniPlaybackState.currentTime || 0, duration));
+  }, [miniVideo?.id]);
 
+  // Simulated progress tick for placeholder videos (no actual media)
   useEffect(() => {
-    if (!isMiniPlayerOpen || !activeVideo || hasMedia || !playbackState.playing) return undefined;
+    if (!isMiniPlayerOpen || !miniVideo || hasMedia || !miniPlaybackState.playing) return undefined;
 
     const interval = setInterval(() => {
       setCurrentTime((time) => {
-        const nextTime = time + (playbackState.speed || 1);
-        const shouldLoop = playbackState.loop ?? true;
+        const nextTime = time + (miniPlaybackState.speed || 1);
+        const shouldLoop = miniPlaybackState.loop ?? true;
         const resolvedTime = nextTime >= duration ? (shouldLoop ? 0 : duration) : nextTime;
-        syncPlayback(activeVideo, {
+        syncMiniPlayback(miniVideo, {
           currentTime: resolvedTime,
           duration,
           playing: shouldLoop || nextTime < duration
@@ -58,78 +61,80 @@ export default function MiniPlayer() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeVideo, duration, hasMedia, isMiniPlayerOpen, playbackState.loop, playbackState.playing, playbackState.speed, syncPlayback]);
+  }, [miniVideo, duration, hasMedia, isMiniPlayerOpen, miniPlaybackState.loop, miniPlaybackState.playing, miniPlaybackState.speed, syncMiniPlayback]);
 
+  // Drive the real <video> element
   useEffect(() => {
     const videoNode = videoRef.current;
-    if (!videoNode || !activeVideo || !hasMedia) return;
+    if (!videoNode || !miniVideo || !hasMedia) return;
 
-    videoNode.volume = playbackState.volume;
-    videoNode.muted = playbackState.muted;
-    videoNode.playbackRate = playbackState.speed;
-    videoNode.loop = playbackState.loop ?? true;
+    videoNode.volume = miniPlaybackState.volume ?? 0.82;
+    videoNode.muted = Boolean(miniPlaybackState.muted);
+    videoNode.playbackRate = miniPlaybackState.speed || 1;
+    videoNode.loop = miniPlaybackState.loop ?? true;
+
     if (Number.isFinite(currentTime) && Math.abs(videoNode.currentTime - currentTime) > 1.5) {
       videoNode.currentTime = currentTime;
     }
 
-    if (playbackState.playing) {
-      videoNode.play().catch(() => syncPlayback(activeVideo, { playing: false }));
+    if (miniPlaybackState.playing) {
+      videoNode.play().catch(() => syncMiniPlayback(miniVideo, { playing: false }));
     } else {
       videoNode.pause();
     }
-  }, [activeVideo, currentTime, hasMedia, playbackState.loop, playbackState.muted, playbackState.playing, playbackState.speed, playbackState.volume, syncPlayback]);
+  }, [miniVideo, currentTime, hasMedia, miniPlaybackState.loop, miniPlaybackState.muted, miniPlaybackState.playing, miniPlaybackState.speed, miniPlaybackState.volume, syncMiniPlayback]);
 
-  if (!isMiniPlayerOpen || !activeVideo) return null;
+  if (!isMiniPlayerOpen || !miniVideo) return null;
 
   function togglePlay() {
-    syncPlayback(activeVideo, { playing: !playbackState.playing, currentTime, duration });
-  }
-
-  function toggleLoop() {
-    syncPlayback(activeVideo, { loop: !(playbackState.loop ?? true), currentTime, duration });
+    syncMiniPlayback(miniVideo, { playing: !miniPlaybackState.playing, currentTime, duration });
   }
 
   function seekTo(percent) {
     const nextTime = (Number(percent) / 100) * duration;
     setCurrentTime(nextTime);
     if (videoRef.current) videoRef.current.currentTime = nextTime;
-    syncPlayback(activeVideo, { currentTime: nextTime, duration });
+    syncMiniPlayback(miniVideo, { currentTime: nextTime, duration });
+  }
+
+  function handleExpand() {
+    // Carry current time so main player resumes from the right spot
+    hideMiniPlayer({ currentTime, duration, playing: miniPlaybackState.playing });
   }
 
   return (
     <aside className="mini-player" aria-label="KujuaTime mini player">
-      <div className="mini-player-media">
+      <div className="mini-player-media" onClick={togglePlay} role="button" tabIndex="0" onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") togglePlay(); }} aria-label={miniPlaybackState.playing ? "Pause" : "Play"}>
         {hasMedia ? (
           <video
             className="mini-player-video"
-            onLoadedMetadata={(event) => syncPlayback(activeVideo, { duration: event.currentTarget.duration })}
+            onLoadedMetadata={(event) => syncMiniPlayback(miniVideo, { duration: event.currentTarget.duration })}
             onTimeUpdate={(event) => {
               const nextTime = event.currentTarget.currentTime;
               setCurrentTime(nextTime);
-              syncPlayback(activeVideo, { currentTime: nextTime, duration: event.currentTarget.duration });
+              syncMiniPlayback(miniVideo, { currentTime: nextTime, duration: event.currentTarget.duration || duration });
             }}
             playsInline
-            poster={activeVideo.thumbnailUrl}
+            poster={miniVideo.thumbnailUrl}
             ref={videoRef}
-            src={activeVideo.videoUrl}
+            src={miniVideo.videoUrl}
           />
         ) : (
-          <button
+          <div
             className="mini-player-poster"
-            onClick={togglePlay}
-            style={{ backgroundImage: `url(${activeVideo.thumbnailUrl || "/logo.svg"})` }}
-            type="button"
-          >
-            <YoutubeIcon name={playbackState.playing ? "pause" : "play"} size={32} />
-          </button>
+            style={{ backgroundImage: `url(${miniVideo.thumbnailUrl || "/logo.svg"})` }}
+          />
         )}
-        <span className="mini-player-loop-badge">{playbackState.loop ? "Looping" : "Loop off"}</span>
+        {/* Play/pause overlay */}
+        <div className={`mini-player-play-overlay ${miniPlaybackState.playing ? "is-playing" : ""}`}>
+          <YoutubeIcon name={miniPlaybackState.playing ? "pause" : "play"} size={30} />
+        </div>
       </div>
 
       <div className="mini-player-body">
-        <div>
-          <strong>{activeVideo.title}</strong>
-          <span>{activeVideo.channelName || activeVideo.ownerName || "KujuaTime Creator"}</span>
+        <div className="mini-player-meta">
+          <strong title={miniVideo.title}>{miniVideo.title}</strong>
+          <span>{miniVideo.channelName || miniVideo.ownerName || "KujuaTime Creator"}</span>
         </div>
         <input
           aria-label="Mini player seek"
@@ -142,15 +147,18 @@ export default function MiniPlayer() {
           value={progress || 0}
         />
         <div className="mini-player-footer">
-          <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+          <span className="mini-player-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
           <div className="mini-player-actions">
-            <button onClick={togglePlay} type="button" aria-label={playbackState.playing ? "Pause mini player" : "Play mini player"}>
-              <YoutubeIcon name={playbackState.playing ? "pause" : "play"} size={18} />
+            <button onClick={togglePlay} type="button" aria-label={miniPlaybackState.playing ? "Pause" : "Play"}>
+              <YoutubeIcon name={miniPlaybackState.playing ? "pause" : "play"} size={18} />
             </button>
-            <button className={playbackState.loop ? "active" : ""} onClick={toggleLoop} type="button" aria-label="Loop video">
-              <YoutubeIcon name="history" size={18} />
-            </button>
-            <a href={`/watch?id=${activeVideo.id}`} onClick={hideMiniPlayer} aria-label="Open full player">
+            {/* Expand: go to full watch page; hides mini player and resumes main player */}
+            <a
+              href={`/watch?id=${miniVideo.id}`}
+              onClick={(e) => { e.preventDefault(); handleExpand(); window.history.pushState({}, "", `/watch?id=${miniVideo.id}`); window.dispatchEvent(new PopStateEvent("popstate")); }}
+              aria-label="Expand to full player"
+              title="Expand"
+            >
               <YoutubeIcon name="theater" size={18} />
             </a>
             <button onClick={closeMiniPlayer} type="button" aria-label="Close mini player">

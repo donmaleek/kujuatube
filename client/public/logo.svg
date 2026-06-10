@@ -1,0 +1,6 @@
+<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="40" rx="8" fill="#111827"/>
+  <rect x="12" y="9" width="30" height="22" rx="7" fill="#7C3AED"/>
+  <path d="M24 14L35 20L24 26V14Z" fill="white"/>
+  <text x="44" y="26" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="700">KujuaTime</text>
+</svg>

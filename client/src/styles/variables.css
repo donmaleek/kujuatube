@@ -1,0 +1,32 @@
+:root {
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f2f2f2;
+  --color-border: #d9d9d9;
+  --color-text: #0f0f0f;
+  --color-muted: #606060;
+  --color-primary: #7c3aed;
+  --color-primary-strong: #5b21b6;
+  --color-success: #0f8a5f;
+  --color-danger: #7c3aed;
+  --shadow-soft: 0 14px 40px rgba(25, 31, 41, 0.08);
+  --radius: 8px;
+  --youtube-hover: #f2f2f2;
+  --youtube-search-bg: #f8f8f8;
+  --youtube-search-border: #c6c6c6;
+  --youtube-blue: #065fd4;
+}
+
+:root[data-theme="dark"] {
+  --color-background: #0f0f0f;
+  --color-surface: #0f0f0f;
+  --color-surface-raised: #272727;
+  --color-border: #303030;
+  --color-text: #f1f1f1;
+  --color-muted: #aaa;
+  --youtube-hover: #272727;
+  --youtube-search-bg: #121212;
+  --youtube-search-border: #303030;
+  --youtube-blue: #3ea6ff;
+  --shadow-soft: 0 14px 40px rgba(0, 0, 0, 0.24);
+}

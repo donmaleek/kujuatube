@@ -97,18 +97,26 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
       if (event.key === "Escape") {
         setCreateOpen(false);
         setCreatorTool("");
+        setMenuOpen(false);
         setMoreOpen(false);
         setNotificationsOpen(false);
         setShortcutsOpen(false);
       }
     }
 
+    // Close mobile menu on client-side navigation (pushState / popstate)
+    function onPopState() {
+      setMenuOpen(false);
+    }
+
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("popstate", onPopState);
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("popstate", onPopState);
     };
   }, []);
 
@@ -610,15 +618,68 @@ export default function Header({ sidebarCollapsed = false, onToggleSidebar }) {
         <YoutubeIcon name="search" />
       </button>
 
+      {/* Mobile full-screen menu drawer */}
       {isMenuOpen ? (
-        <nav className="youtube-mobile-menu">
-          <a href="/">Home</a>
-          <a href="/trending">Trending</a>
-          <a href="/subscriptions">Subscriptions</a>
-          <a href="/library">You</a>
-          <a href={user ? "/upload" : uploadLoginPath}>Create</a>
-        </nav>
+        <div
+          className="youtube-mobile-menu-overlay"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
       ) : null}
+      <nav
+        className={isMenuOpen ? "youtube-mobile-menu-drawer open" : "youtube-mobile-menu-drawer"}
+        aria-label="Navigation menu"
+        aria-hidden={!isMenuOpen}
+      >
+        <div className="youtube-mobile-menu-header">
+          <a className="youtube-brand" href="/" onClick={() => setMenuOpen(false)} aria-label="KujuaTime home">
+            <span className="youtube-brand-mark"><span /></span>
+            <span className="youtube-brand-word">KujuaTime</span>
+          </a>
+          <button className="yt-icon-button" onClick={() => setMenuOpen(false)} aria-label="Close menu" type="button">
+            <YoutubeIcon name="close" />
+          </button>
+        </div>
+        <a href="/" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="home" size={20} /><span>Home</span>
+        </a>
+        <a href="/trending" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="trending" size={20} /><span>Trending</span>
+        </a>
+        <a href="/subscriptions" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="subscriptions" size={20} /><span>Subscriptions</span>
+        </a>
+        <a href="/history" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="history" size={20} /><span>History</span>
+        </a>
+        <a href="/library" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="watchLater" size={20} /><span>You</span>
+        </a>
+        <a href="/search?category=Music" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="music" size={20} /><span>Music</span>
+        </a>
+        <a href="/search?category=Gaming" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="gaming" size={20} /><span>Gaming</span>
+        </a>
+        <a href="/search?category=News" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="news" size={20} /><span>News</span>
+        </a>
+        <a href="/search?category=Sports" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="trending" size={20} /><span>Sports</span>
+        </a>
+        {user ? (
+          <a href="/upload" onClick={() => setMenuOpen(false)}>
+            <YoutubeIcon name="upload" size={20} /><span>Create</span>
+          </a>
+        ) : (
+          <a href={uploadLoginPath} onClick={() => setMenuOpen(false)}>
+            <YoutubeIcon name="userCircle" size={20} /><span>Sign in</span>
+          </a>
+        )}
+        <a href="/profile" onClick={() => setMenuOpen(false)}>
+          <YoutubeIcon name="settings" size={20} /><span>Settings</span>
+        </a>
+      </nav>
 
       {shortcutsOpen ? (
         <div className="youtube-shortcuts-modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
