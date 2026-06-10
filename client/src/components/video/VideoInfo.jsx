@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Avatar from "../common/Avatar.jsx";
 import { formatDate } from "../../utils/formatDate.js";
 import { formatViews } from "../../utils/formatViews.js";
 import SubscribeButton from "../channel/SubscribeButton.jsx";
@@ -15,7 +16,7 @@ export default function VideoInfo({ video, theater, onToggleTheater }) {
       <div className="watch-below-title">
         <div className="watch-channel-cluster">
           <a className="channel-row" href={`/channel?id=${video.channelId || video.userId}`}>
-            <span className="avatar">{(video.channelName || "K").slice(0, 1)}</span>
+            <Avatar src={video.channelAvatarUrl} name={video.channelName || "K"} />
             <span>
               <strong>{video.channelName || video.ownerName || "KujuaTime Creator"}</strong>
               <small>{video.subscribers || 0} subscribers</small>

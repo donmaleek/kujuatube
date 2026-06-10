@@ -1,3 +1,4 @@
+import Avatar from "../common/Avatar.jsx";
 import SubscribeButton from "./SubscribeButton.jsx";
 
 export default function ChannelHeader({ channel }) {
@@ -7,7 +8,7 @@ export default function ChannelHeader({ channel }) {
     <section className="channel-header">
       <div className="channel-banner" style={{ backgroundImage: `url(${channel.bannerUrl || "/logo.svg"})` }} />
       <div className="channel-summary">
-        <span className="channel-avatar">{(channel.name || "K").slice(0, 1)}</span>
+        <Avatar src={channel.avatarUrl} name={channel.name || "K"} className="channel-avatar" />
         <div>
           <h1>{channel.name}</h1>
           <p className="muted">

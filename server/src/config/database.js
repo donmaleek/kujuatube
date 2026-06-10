@@ -337,7 +337,7 @@ export function publicVideo(video) {
     ...video,
     ownerName: owner?.name || video.channelName || "KujuaTime Creator",
     channelName: video.channelName || owner?.name || "KujuaTime Creator",
-    // Live counts — computed from the in-memory store on every request
+    channelAvatarUrl: owner?.avatarUrl || "",
     subscribers: db.subscriptions.filter((s) => s.channelId === video.userId).length,
     commentCount: db.comments.filter((c) => c.videoId === video.id).length
   };

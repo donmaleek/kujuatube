@@ -1050,8 +1050,64 @@ body {
   overflow: hidden;
   position: fixed;
   right: 18px;
-  width: min(384px, calc(100vw - 28px));
+  width: min(384px, calc(100vw - 36px));
   z-index: 40;
+}
+
+/* ── Mobile: collapse to a YouTube-style slim bar ── */
+@media (max-width: 640px) {
+  .mini-player {
+    bottom: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    right: 0;
+    width: 100%;
+  }
+
+  .mini-player-media {
+    aspect-ratio: unset;
+    flex: 0 0 96px;
+    height: 60px;
+  }
+
+  /* Hide the full body (progress bar, footer) on mobile */
+  .mini-player-body {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    padding: 0 8px;
+    min-width: 0;
+  }
+
+  .mini-player-meta {
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  .mini-player-progress {
+    display: none;
+  }
+
+  .mini-player-footer {
+    display: none;
+  }
+
+  /* Show only play/pause and close on mobile */
+  .mini-player-actions {
+    gap: 2px;
+  }
+
+  .mini-player-actions a[aria-label="Expand to full player"] {
+    display: none;
+  }
 }
 
 .mini-player-media {
@@ -1782,7 +1838,13 @@ body {
   font-weight: 900;
   height: 42px;
   justify-content: center;
+  object-fit: cover;
   width: 42px;
+}
+
+img.avatar,
+img.channel-avatar {
+  background: transparent;
 }
 
 .channel-avatar {

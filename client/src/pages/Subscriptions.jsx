@@ -1,3 +1,4 @@
+import Avatar from "../components/common/Avatar.jsx";
 import LoadingSpinner from "../components/common/LoadingSpinner.jsx";
 import { useSubscriptions } from "../hooks/useSubscriptions.js";
 
@@ -15,7 +16,7 @@ export default function Subscriptions() {
       <section className="list-panel">
         {subscriptions.map((item) => (
           <article className="list-row" key={item.id || item.channelId}>
-            <span className="avatar">{(item.channelName || "C").slice(0, 1)}</span>
+            <Avatar src={item.avatarUrl} name={item.channelName || "C"} />
             <div>
               <h3>{item.channelName || item.channelId}</h3>
               <p className="muted">Subscribed channel</p>
