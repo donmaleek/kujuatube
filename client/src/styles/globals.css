@@ -4844,8 +4844,30 @@ img.channel-avatar {
   pointer-events: auto;
 }
 
-/* Actions column — right side of the player, above the controls bar (≈ 72 px) */
+/* Covers the whole player so creator (top) and buttons (bottom) can be
+   independently anchored without being part of the same flex column. */
 .video-tiktok-actions {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+/* Creator profile — top-right, well clear of the header */
+.tiktok-creator-section {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: absolute;
+  right: 14px;
+  top: 18px;
+  width: 52px;
+}
+
+/* Action buttons — bottom-right, above the player controls bar */
+.tiktok-buttons-section {
   align-items: center;
   bottom: 76px;
   display: flex;
@@ -4857,7 +4879,7 @@ img.channel-avatar {
 }
 
 .tiktok-avatar-wrap {
-  margin-bottom: 18px;
+  margin-bottom: 4px;
   position: relative;
 }
 
@@ -4964,17 +4986,21 @@ img.channel-avatar {
   color: #fff;
 }
 
-/* Mobile: overlay stays inside the player-shell (same as desktop).
-   Use smaller icons and tighter gap so the column fits in a shorter player.
-   On very narrow phones (<480px) the column compresses further. */
+/* Mobile: scale down both sections inside the player */
 @media (max-width: 860px) {
-  /* Full-width player with no rounded corners on mobile */
   .watch-player-wrap .player-shell {
     border-radius: 0;
     width: 100%;
   }
 
-  .video-tiktok-actions {
+  .tiktok-creator-section {
+    gap: 4px;
+    right: 8px;
+    top: 12px;
+    width: 44px;
+  }
+
+  .tiktok-buttons-section {
     bottom: 68px;
     gap: 10px;
     right: 8px;
@@ -4987,7 +5013,7 @@ img.channel-avatar {
   }
 
   .tiktok-avatar-wrap {
-    margin-bottom: 18px;
+    margin-bottom: 2px;
   }
 
   .tiktok-creator-label {
@@ -5014,15 +5040,15 @@ img.channel-avatar {
     width: 44px;
   }
 
-  /* Hide YouTube-style action bar below title on mobile — TikTok overlay replaces it */
   .youtube-watch-actions {
     display: none;
   }
 }
 
-/* Very narrow phones: shrink to 3 icon row to fit within a short 16:9 player */
+/* Very narrow phones: creator stays top-right, buttons switch to a compact
+   horizontal row above the controls bar */
 @media (max-width: 480px) {
-  .video-tiktok-actions {
+  .tiktok-buttons-section {
     align-items: center;
     bottom: 60px;
     flex-direction: row;
@@ -5032,14 +5058,12 @@ img.channel-avatar {
     width: auto;
   }
 
-  /* Hide avatar, labels, and save on very small screens */
-  .tiktok-avatar-wrap,
-  .tiktok-creator-label,
-  .tiktok-sub-count {
-    display: none;
+  .tiktok-creator-section {
+    right: 8px;
+    top: 10px;
+    width: 40px;
   }
 
-  /* Smaller icons for the horizontal row */
   .tiktok-icon-wrap {
     height: 34px;
     width: 34px;

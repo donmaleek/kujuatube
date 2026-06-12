@@ -109,79 +109,82 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
 
   return (
     <div className="video-tiktok-actions">
-      {/* Creator avatar + subscribe dot + name + sub count */}
-      <div className="tiktok-avatar-wrap">
-        <a
-          className="tiktok-avatar"
-          href={`/channel?id=${channelId}`}
-          title={channelName}
-        >
-          {(channelName || "K")[0].toUpperCase()}
-        </a>
-        <button
-          className={subscribed ? "tiktok-subscribe-dot subscribed" : "tiktok-subscribe-dot"}
-          onClick={toggleSubscribe}
-          disabled={subscribing}
-          aria-label={subscribed ? "Unsubscribe" : "Subscribe"}
-          title={subscribed ? "Subscribed" : "Subscribe"}
-          type="button"
-        >
-          {subscribed ? "✓" : "+"}
-        </button>
+      {/* Creator — anchored top-right of the player */}
+      <div className="tiktok-creator-section">
+        <div className="tiktok-avatar-wrap">
+          <a
+            className="tiktok-avatar"
+            href={`/channel?id=${channelId}`}
+            title={channelName}
+          >
+            {(channelName || "K")[0].toUpperCase()}
+          </a>
+          <button
+            className={subscribed ? "tiktok-subscribe-dot subscribed" : "tiktok-subscribe-dot"}
+            onClick={toggleSubscribe}
+            disabled={subscribing}
+            aria-label={subscribed ? "Unsubscribe" : "Subscribe"}
+            title={subscribed ? "Subscribed" : "Subscribe"}
+            type="button"
+          >
+            {subscribed ? "✓" : "+"}
+          </button>
+        </div>
+        <span className="tiktok-creator-label" title={channelName}>
+          {channelName.split(" ")[0]}
+        </span>
+        <span className="tiktok-sub-count">{fmtCount(subCount)} subs</span>
       </div>
 
-      {/* Channel name + subscriber count — visible on mobile overlay */}
-      <span className="tiktok-creator-label" title={channelName}>
-        {channelName.split(" ")[0]}
-      </span>
-      <span className="tiktok-sub-count">{fmtCount(subCount)} subs</span>
+      {/* Action buttons — anchored bottom-right of the player */}
+      <div className="tiktok-buttons-section">
+        <button
+          className={userLike === 1 ? "tiktok-action active" : "tiktok-action"}
+          onClick={handleLike}
+          type="button"
+          aria-label="Like"
+          aria-pressed={userLike === 1}
+        >
+          <span className="tiktok-icon-wrap"><YoutubeIcon name="like" size={22} /></span>
+          <span>{likeCount > 0 ? fmtCount(likeCount) : "Like"}</span>
+        </button>
 
-      <button
-        className={userLike === 1 ? "tiktok-action active" : "tiktok-action"}
-        onClick={handleLike}
-        type="button"
-        aria-label="Like"
-        aria-pressed={userLike === 1}
-      >
-        <span className="tiktok-icon-wrap"><YoutubeIcon name="like" size={22} /></span>
-        <span>{likeCount > 0 ? fmtCount(likeCount) : "Like"}</span>
-      </button>
+        <button
+          className={userLike === -1 ? "tiktok-action active" : "tiktok-action"}
+          onClick={handleDislike}
+          type="button"
+          aria-label="Dislike"
+          aria-pressed={userLike === -1}
+        >
+          <span className="tiktok-icon-wrap"><YoutubeIcon name="dislike" size={22} /></span>
+          <span>{dislikeCount > 0 ? fmtCount(dislikeCount) : "Dislike"}</span>
+        </button>
 
-      <button
-        className={userLike === -1 ? "tiktok-action active" : "tiktok-action"}
-        onClick={handleDislike}
-        type="button"
-        aria-label="Dislike"
-        aria-pressed={userLike === -1}
-      >
-        <span className="tiktok-icon-wrap"><YoutubeIcon name="dislike" size={22} /></span>
-        <span>{dislikeCount > 0 ? fmtCount(dislikeCount) : "Dislike"}</span>
-      </button>
+        <button className="tiktok-action" onClick={onScrollToComments} type="button" aria-label="Jump to comments">
+          <span className="tiktok-icon-wrap"><YoutubeIcon name="comment" size={22} /></span>
+          <span>{commentCount > 0 ? fmtCount(commentCount) : "Comments"}</span>
+        </button>
 
-      <button className="tiktok-action" onClick={onScrollToComments} type="button" aria-label="Jump to comments">
-        <span className="tiktok-icon-wrap"><YoutubeIcon name="comment" size={22} /></span>
-        <span>{commentCount > 0 ? fmtCount(commentCount) : "Comments"}</span>
-      </button>
+        <button
+          className={shared ? "tiktok-action active" : "tiktok-action"}
+          onClick={share}
+          type="button"
+          aria-label="Share"
+        >
+          <span className="tiktok-icon-wrap"><YoutubeIcon name="share" size={22} /></span>
+          <span>{shared ? "Copied!" : "Share"}</span>
+        </button>
 
-      <button
-        className={shared ? "tiktok-action active" : "tiktok-action"}
-        onClick={share}
-        type="button"
-        aria-label="Share"
-      >
-        <span className="tiktok-icon-wrap"><YoutubeIcon name="share" size={22} /></span>
-        <span>{shared ? "Copied!" : "Share"}</span>
-      </button>
-
-      <button
-        className={saved ? "tiktok-action active" : "tiktok-action"}
-        onClick={() => setSaved((v) => !v)}
-        type="button"
-        aria-label="Save"
-      >
-        <span className="tiktok-icon-wrap"><YoutubeIcon name="bookmark" size={22} /></span>
-        <span>{saved ? "Saved" : "Save"}</span>
-      </button>
+        <button
+          className={saved ? "tiktok-action active" : "tiktok-action"}
+          onClick={() => setSaved((v) => !v)}
+          type="button"
+          aria-label="Save"
+        >
+          <span className="tiktok-icon-wrap"><YoutubeIcon name="bookmark" size={22} /></span>
+          <span>{saved ? "Saved" : "Save"}</span>
+        </button>
+      </div>
     </div>
   );
 }
