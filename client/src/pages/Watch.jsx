@@ -20,6 +20,14 @@ export default function Watch() {
   const playerWrapRef = useRef(null);
   const { openMiniPlayer, hideMiniPlayer, isMiniPlayerOpen, miniVideo, playbackState } = usePlayer();
 
+  // Refs so the IntersectionObserver always reads fresh state without stale closures
+  const playbackStateRef = useRef(playbackState);
+  const isMiniPlayerOpenRef = useRef(isMiniPlayerOpen);
+  const miniVideoRef = useRef(miniVideo);
+  useEffect(() => { playbackStateRef.current = playbackState; }, [playbackState]);
+  useEffect(() => { isMiniPlayerOpenRef.current = isMiniPlayerOpen; }, [isMiniPlayerOpen]);
+  useEffect(() => { miniVideoRef.current = miniVideo; }, [miniVideo]);
+
   useEffect(() => {
     if (video) addToHistory(video);
   }, [video, addToHistory]);
@@ -32,24 +40,22 @@ export default function Watch() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        const state = playbackStateRef.current;
         if (!entry.isIntersecting) {
-          // Player completely off-screen — open mini player only if actively playing
-          if (playbackState.playing && playbackState.currentTime > 0) {
-            openMiniPlayer(video, { ...playbackState, playing: true });
+          if (state.playing && state.currentTime > 0) {
+            openMiniPlayer(video, { ...state, playing: true });
           }
         } else {
-          // Player back in view — dismiss mini player for this video
-          if (isMiniPlayerOpen && miniVideo?.id === video.id) {
-            hideMiniPlayer({ currentTime: playbackState.currentTime });
+          if (isMiniPlayerOpenRef.current && miniVideoRef.current?.id === video.id) {
+            hideMiniPlayer({ currentTime: state.currentTime });
           }
         }
       },
-      { threshold: 0 } // fire only when fully off-screen (was 0.2 — fired too eagerly)
+      { threshold: 0 }
     );
 
     observer.observe(wrap);
     return () => observer.disconnect();
-  // Re-create observer when video changes; playback state intentionally read at trigger time via closure
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video?.id]);
 
@@ -72,8 +78,12 @@ export default function Watch() {
     <div className={theater ? "watch-layout theater-mode" : "watch-layout"}>
       <div className="watch-primary">
         <div className="watch-player-wrap" ref={playerWrapRef}>
-          <VideoPlayer video={video} theater={theater} onToggleTheater={() => setTheater((value) => !value)} />
-          <VideoTikTokActions video={video} onScrollToComments={scrollToComments} />
+          <VideoPlayer
+            video={video}
+            theater={theater}
+            onToggleTheater={() => setTheater((value) => !value)}
+            overlay={<VideoTikTokActions video={video} onScrollToComments={scrollToComments} />}
+          />
         </div>
         <VideoInfo video={video} theater={theater} onToggleTheater={() => setTheater((value) => !value)} />
         <WatchCompanion video={video} />

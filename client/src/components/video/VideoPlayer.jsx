@@ -71,13 +71,14 @@ function buildCaptionSegments(video) {
     .filter(Boolean);
 }
 
-export default function VideoPlayer({ video, theater = false, onToggleTheater, autoStart = true }) {
+export default function VideoPlayer({ video, theater = false, onToggleTheater, autoStart = true, overlay }) {
   const shellRef = useRef(null);
   const videoRef = useRef(null);
   const settingsRef = useRef(null);
   const settingsButtonRef = useRef(null);
-  const { activeVideo, isMiniPlayerOpen, miniVideo, miniPlaybackState, openMiniPlayer, playbackState, syncPlayback } = usePlayer();
+  const { activeVideo, isMiniPlayerOpen, miniVideo, openMiniPlayer, playbackState, syncPlayback } = usePlayer();
   const previousVolumeRef = useRef(playbackState.volume || 0.82);
+  const currentTimeRef = useRef(0); // always-current time without re-renders
   const isContextVideo = activeVideo?.id === video?.id;
   // isMiniVideo: the mini player is currently playing THIS video
   const isMiniVideo = miniVideo?.id === video?.id;
@@ -217,19 +218,19 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     };
   }, [video?.id]);
 
+  // Sync player state to context — excludes currentTime to prevent 4× per-second churn.
+  // currentTime is synced on pause (effect below) and on seek.
   useEffect(() => {
-    // Always sync main player state — mini player uses separate miniPlaybackState
     if (!video) return;
-    syncPlayback(video, { currentTime, duration, loop, muted, playing, speed, volume });
-  }, [currentTime, duration, loop, muted, playing, speed, syncPlayback, video, volume]);
+    syncPlayback(video, { duration, loop, muted, playing, speed, volume });
+  }, [duration, loop, muted, playing, speed, syncPlayback, video, volume]);
 
-  // Pause main player when mini player opens for this same video (avoid double audio)
+  // Sync currentTime to context when paused so mini-player and IntersectionObserver
+  // resume from the right position.
   useEffect(() => {
-    if (!isMiniPlayerOpen || !isMiniVideo) return;
-    const videoNode = videoRef.current;
-    if (videoNode) videoNode.pause();
-    setPlaying(false);
-  }, [isMiniPlayerOpen, isMiniVideo]);
+    if (!video || playing) return;
+    syncPlayback(video, { currentTime: currentTimeRef.current });
+  }, [playing, syncPlayback, video]);
 
   useEffect(() => {
     if (hasMedia || !playing) return undefined;
@@ -288,27 +289,13 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     setAutoMuted(false);
   }
 
-  // Pause main player immediately when mini player takes over this video
+  // Pause main player when mini player takes over this video
   useEffect(() => {
     if (isMiniPlayerOpen && isMiniVideo && hasMedia) {
       videoRef.current?.pause();
       setPlaying(false);
     }
   }, [isMiniPlayerOpen, isMiniVideo, hasMedia]);
-
-  // When mini player closes for this video, resume from its last timestamp
-  useEffect(() => {
-    if (!isMiniPlayerOpen && isMiniVideo && video && hasMedia) {
-      const resumeTime = miniPlaybackState.currentTime;
-      const videoNode = videoRef.current;
-      if (videoNode && Number.isFinite(resumeTime) && resumeTime > 0) {
-        videoNode.currentTime = resumeTime;
-        setCurrentTime(resumeTime);
-      }
-      startMediaPlayback({ allowMutedFallback: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMiniPlayerOpen]);
 
   useEffect(() => {
     // Don't start the main player if the mini player is already playing this video
@@ -364,12 +351,14 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     if (!duration) return;
     const nextTime = (clamp(Number(percent), 0, 100) / 100) * duration;
     setCurrentTime(nextTime);
+    currentTimeRef.current = nextTime;
     if (videoRef.current) videoRef.current.currentTime = nextTime;
   }
 
   function skip(amount) {
     const nextTime = Math.min(duration, Math.max(0, currentTime + amount));
     setCurrentTime(nextTime);
+    currentTimeRef.current = nextTime;
     if (videoRef.current) videoRef.current.currentTime = nextTime;
   }
 
@@ -425,7 +414,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
 
   function sendToMiniPlayer() {
     openMiniPlayer(video, {
-      currentTime,
+      currentTime: currentTimeRef.current,
       duration,
       loop: true,
       muted,
@@ -440,12 +429,14 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     if (videoWidth && videoHeight) setNaturalAspect({ width: videoWidth, height: videoHeight });
     if (Number.isFinite(nextDuration) && nextDuration > 0) setMediaDuration(nextDuration);
     setCurrentTime(nextTime);
+    currentTimeRef.current = nextTime;
   }
 
   function updateMediaTime(event) {
     const { currentTime: nextTime, duration: nextDuration } = event.currentTarget;
     if (Number.isFinite(nextDuration) && nextDuration > 0) setMediaDuration(nextDuration);
     setCurrentTime(nextTime);
+    currentTimeRef.current = nextTime;
   }
 
   function handleMediaEnded() {
@@ -489,7 +480,6 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
           className="video-player"
           src={video.videoUrl}
           poster={video.thumbnailUrl}
-          autoPlay={autoStart}
           muted={muted}
           playsInline
           preload="auto"
@@ -586,6 +576,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
           </div>
         </div>
       </div>
+      {overlay ? <div className="player-side-overlay">{overlay}</div> : null}
       {settingsOpen ? (
         <div className="player-settings-panel" id="player-settings-panel" ref={settingsRef}>
           <label>
