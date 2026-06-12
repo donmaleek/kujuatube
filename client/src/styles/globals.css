@@ -950,20 +950,72 @@ body {
   opacity: 1;
 }
 
-.player-timeline {
-  appearance: none;
-  background: linear-gradient(to right, #7c3aed var(--progress), rgba(255, 255, 255, 0.36) var(--progress));
-  border: 0;
-  border-radius: 999px;
+/* YouTube-style progress bar wrapper — expands on hover */
+.player-timeline-wrap {
+  align-items: center;
   cursor: pointer;
-  height: 5px;
-  padding: 0;
+  display: flex;
+  height: 16px;
+  position: relative;
+  width: 100%;
 }
 
-.player-timeline::-webkit-slider-thumb,
+.player-timeline {
+  appearance: none;
+  background: linear-gradient(to right, #ff0000 var(--progress), rgba(255, 255, 255, 0.28) var(--progress));
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  height: 3px;
+  padding: 0;
+  transition: height 0.1s ease;
+  width: 100%;
+}
+
+.player-timeline-wrap:hover .player-timeline {
+  height: 5px;
+}
+
+/* Scrubber thumb — red dot, only visible on hover */
+.player-timeline::-webkit-slider-thumb {
+  appearance: none;
+  background: #ff0000;
+  border-radius: 999px;
+  height: 13px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  width: 13px;
+}
+
+.player-timeline-wrap:hover .player-timeline::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.player-timeline::-moz-range-thumb {
+  background: #ff0000;
+  border: none;
+  border-radius: 999px;
+  height: 13px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  width: 13px;
+}
+
+.player-timeline-wrap:hover .player-timeline::-moz-range-thumb {
+  opacity: 1;
+}
+
 .volume-slider::-webkit-slider-thumb {
   appearance: none;
   background: #ffffff;
+  border-radius: 999px;
+  height: 13px;
+  width: 13px;
+}
+
+.volume-slider::-moz-range-thumb {
+  background: #ffffff;
+  border: none;
   border-radius: 999px;
   height: 13px;
   width: 13px;
@@ -2432,6 +2484,180 @@ img.channel-avatar {
 
 .studio-thumbnail-drop {
   min-height: 250px;
+}
+
+/* ── YouTube-style thumbnail creator ───────────────────────── */
+
+.yt-thumbnail-section {
+  display: grid;
+  gap: 16px;
+}
+
+.yt-thumbnail-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.yt-thumbnail-header p {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.yt-thumbnail-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Each thumbnail card */
+.yt-thumb-card {
+  aspect-ratio: 16 / 9;
+  background: var(--color-hover);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.15s ease;
+  width: 100%;
+}
+
+.yt-thumb-card img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.yt-thumb-card.selected {
+  border-color: var(--youtube-blue, #065fd4);
+}
+
+/* Blue checkmark badge */
+.yt-thumb-check {
+  align-items: center;
+  background: var(--youtube-blue, #065fd4);
+  border-radius: 999px;
+  color: #fff;
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 22px;
+  z-index: 2;
+}
+
+/* Small label at bottom of card */
+.yt-thumb-label {
+  background: rgba(0, 0, 0, 0.55);
+  bottom: 0;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  left: 0;
+  padding: 3px 8px;
+  position: absolute;
+  right: 0;
+  text-align: center;
+}
+
+/* Upload card — dashed border */
+.yt-thumb-upload {
+  border: 2px dashed var(--color-border);
+}
+
+.yt-thumb-upload.selected {
+  border-color: var(--youtube-blue, #065fd4);
+  border-style: solid;
+}
+
+.yt-thumb-upload-inner {
+  align-items: center;
+  color: var(--color-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  justify-content: center;
+  padding: 12px;
+}
+
+.yt-thumb-upload-inner span {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.yt-thumb-upload-inner small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
+.yt-thumb-upload:hover {
+  background: var(--color-hover);
+  border-color: var(--color-text);
+}
+
+/* Solo upload card (no video selected yet) */
+.yt-thumb-solo {
+  grid-column: 1 / -1;
+  min-height: 140px;
+}
+
+/* Skeleton shimmer cards while extracting frames */
+.yt-thumb-skeleton {
+  overflow: hidden;
+}
+
+.yt-thumb-shimmer {
+  animation: yt-shimmer 1.4s ease infinite;
+  background: linear-gradient(90deg, var(--color-hover) 0%, var(--color-surface) 50%, var(--color-hover) 100%);
+  background-size: 200% 100%;
+  height: 100%;
+  width: 100%;
+}
+
+@keyframes yt-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Selected thumbnail preview below the grid */
+.yt-thumbnail-preview {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.yt-thumbnail-preview img {
+  aspect-ratio: 16 / 9;
+  display: block;
+  object-fit: cover;
+  width: 120px;
+}
+
+.yt-thumbnail-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.yt-thumbnail-preview-meta strong {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.yt-thumbnail-preview-meta small {
+  color: var(--color-muted);
+  font-size: 0.75rem;
 }
 
 .studio-mini-icon {

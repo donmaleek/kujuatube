@@ -523,16 +523,18 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
         </div>
       ) : null}
       <div className="player-controls">
-        <input
-          aria-label="Seek"
-          className="player-timeline"
-          max="100"
-          min="0"
-          onChange={(event) => seekTo(event.target.value)}
-          style={{ "--progress": `${progress}%` }}
-          type="range"
-          value={progress || 0}
-        />
+        <div className="player-timeline-wrap">
+          <input
+            aria-label="Seek"
+            className="player-timeline"
+            max="100"
+            min="0"
+            onChange={(event) => seekTo(event.target.value)}
+            style={{ "--progress": `${progress}%` }}
+            type="range"
+            value={progress || 0}
+          />
+        </div>
         <div className="player-control-row">
           <div className="player-left-controls">
             <button onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} type="button">

@@ -245,7 +245,7 @@ export default function Upload() {
             </div>
           </section>
 
-          <ThumbnailUploader file={values.thumbnailFile} previewUrl={thumbnailPreviewUrl} onSelect={selectThumbnailFile} />
+          <ThumbnailUploader videoSrc={videoPreviewUrl} file={values.thumbnailFile} previewUrl={thumbnailPreviewUrl} onSelect={selectThumbnailFile} />
 
           <section className="studio-audience-panel">
             <h2>Audience</h2>
