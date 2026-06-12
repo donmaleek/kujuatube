@@ -35,6 +35,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:80"
+    volumes:
+      - uploads:/var/uploads:ro
     depends_on:
       - client
       - server

@@ -85,6 +85,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
   const [currentTime, setCurrentTime] = useState(isContextVideo ? playbackState.currentTime : 0);
   const [volume, setVolume] = useState(playbackState.volume || 0.82);
   const [muted, setMuted] = useState(Boolean(playbackState.muted));
+  const [autoMuted, setAutoMuted] = useState(false); // true when browser forced muted autoplay
   const [captions, setCaptions] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [speed, setSpeed] = useState(playbackState.speed || 1);
@@ -264,6 +265,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
       if (canRetryMuted) {
         videoNode.muted = true;
         setMuted(true);
+        setAutoMuted(true); // flag so we show the unmute hint
 
         try {
           await videoNode.play();
@@ -277,6 +279,13 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
       setPlaying(false);
       return false;
     }
+  }
+
+  function unmutePlayer() {
+    if (!videoRef.current) return;
+    videoRef.current.muted = false;
+    setMuted(false);
+    setAutoMuted(false);
   }
 
   // Pause main player immediately when mini player takes over this video
@@ -341,7 +350,10 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     if (!videoNode) return;
 
     if (videoNode.paused) {
-      await startMediaPlayback({ allowMutedFallback: true });
+      // User clicked play — never silently mute on explicit interaction
+      // If the browser had forced muted autoplay, unmute now
+      if (autoMuted) unmutePlayer();
+      await startMediaPlayback({ allowMutedFallback: false });
     } else {
       videoNode.pause();
       setPlaying(false);
@@ -499,6 +511,12 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
       <button className={playing ? "player-center-button playing" : "player-center-button"} onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} type="button">
         <YoutubeIcon name={playing ? "pause" : "play"} size={42} />
       </button>
+      {autoMuted && playing ? (
+        <button className="player-unmute-hint" onClick={unmutePlayer} type="button" aria-label="Unmute">
+          <YoutubeIcon name="muted" size={20} />
+          <span>Tap to unmute</span>
+        </button>
+      ) : null}
       {captions ? (
         <div className="caption-overlay">
           {captionText}
