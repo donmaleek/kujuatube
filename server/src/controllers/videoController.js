@@ -3,9 +3,19 @@ import { getRecommendations } from "../services/recommendationService.js";
 import { env } from "../config/env.js";
 import { sendCreated } from "../utils/http.js";
 
-function uploadedFileUrl(file) {
+function resolveBaseUrl(req) {
+  // Prefer explicit env var; fall back to public-facing host from proxy headers
+  if (env.publicBaseUrl && !env.publicBaseUrl.includes("localhost")) {
+    return env.publicBaseUrl.replace(/\/$/, "");
+  }
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+  return `${proto}://${host}`;
+}
+
+function uploadedFileUrl(req, file) {
   if (!file?.filename) return "";
-  return `${env.publicBaseUrl.replace(/\/$/, "")}/uploads/${encodeURIComponent(file.filename)}`;
+  return `${resolveBaseUrl(req)}/uploads/${encodeURIComponent(file.filename)}`;
 }
 
 export function index(req, res) {
@@ -21,8 +31,8 @@ export function store(req, res) {
   const thumbnailFile = req.files?.thumbnail?.[0];
   const payload = {
     ...req.body,
-    videoUrl: uploadedFileUrl(videoFile) || req.body.videoUrl,
-    thumbnailUrl: uploadedFileUrl(thumbnailFile) || req.body.thumbnailUrl
+    videoUrl: uploadedFileUrl(req, videoFile) || req.body.videoUrl,
+    thumbnailUrl: uploadedFileUrl(req, thumbnailFile) || req.body.thumbnailUrl
   };
 
   return sendCreated(res, createVideo(req.user.id, payload));
