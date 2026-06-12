@@ -4857,7 +4857,7 @@ img.channel-avatar {
 }
 
 .tiktok-avatar-wrap {
-  margin-bottom: 4px;
+  margin-bottom: 18px;
   position: relative;
 }
 
@@ -4901,7 +4901,7 @@ img.channel-avatar {
 }
 
 .tiktok-subscribe-dot:not(.subscribed) {
-  background: #cc0000; /* red "+" until subscribed */
+  background: #7c3aed;
 }
 
 .tiktok-subscribe-dot.subscribed {
@@ -4987,7 +4987,7 @@ img.channel-avatar {
   }
 
   .tiktok-avatar-wrap {
-    margin-bottom: 14px;
+    margin-bottom: 18px;
   }
 
   .tiktok-creator-label {
