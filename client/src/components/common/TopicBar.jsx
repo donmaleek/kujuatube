@@ -5,10 +5,7 @@ const topics = [
   "Music",
   "Culture",
   "News",
-  "Sports",
-  "Recently uploaded",
-  "Watched",
-  "New to you"
+  "Sports"
 ];
 
 export default function TopicBar() {

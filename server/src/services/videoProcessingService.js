@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { createId, db, findUserById, persistDb, publicVideo } from "../config/database.js";
 import { queueNotification } from "./notificationService.js";
 import { createVideoModel } from "../models/Video.js";
@@ -76,4 +78,49 @@ export function updateVideoStatus(videoId, status) {
   video.updatedAt = new Date().toISOString();
   persistDb();
   return publicVideo(video);
+}
+
+export function listMyVideos(userId) {
+  return db.videos
+    .filter((v) => v.userId === userId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map(publicVideo);
+}
+
+export function updateVideo(videoId, userId, payload) {
+  const video = db.videos.find((v) => v.id === videoId);
+  if (!video) throw new HttpError(404, "Video not found");
+  if (video.userId !== userId) throw new HttpError(403, "Not your video");
+
+  const allowed = ["title", "description", "category", "visibility", "thumbnailUrl"];
+  for (const key of allowed) {
+    if (payload[key] !== undefined) video[key] = payload[key];
+  }
+  video.updatedAt = new Date().toISOString();
+  persistDb();
+  return publicVideo(video);
+}
+
+export function deleteVideo(videoId, userId, uploadDir) {
+  const idx = db.videos.findIndex((v) => v.id === videoId);
+  if (idx === -1) throw new HttpError(404, "Video not found");
+  const video = db.videos[idx];
+  if (video.userId !== userId) throw new HttpError(403, "Not your video");
+
+  // Best-effort: delete actual files from disk
+  function tryDelete(url) {
+    if (!url) return;
+    try {
+      const filename = decodeURIComponent(url.split("/uploads/")[1] || "");
+      if (filename) fs.unlinkSync(path.join(uploadDir, filename));
+    } catch {}
+  }
+  tryDelete(video.videoUrl);
+  tryDelete(video.thumbnailUrl);
+
+  // Remove related data
+  db.videos.splice(idx, 1);
+  db.comments = db.comments.filter((c) => c.videoId !== videoId);
+  db.likes = db.likes.filter((l) => l.videoId !== videoId);
+  persistDb();
 }

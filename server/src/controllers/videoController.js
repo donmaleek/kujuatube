@@ -1,8 +1,9 @@
 import path from "node:path";
-import { createVideo, getVideoById, listVideos } from "../services/videoProcessingService.js";
+import fs from "node:fs";
+import { createVideo, getVideoById, listVideos, listMyVideos, updateVideo, deleteVideo } from "../services/videoProcessingService.js";
 import { getRecommendations } from "../services/recommendationService.js";
 import { env } from "../config/env.js";
-import { sendCreated } from "../utils/http.js";
+import { sendCreated, HttpError } from "../utils/http.js";
 import { processImage } from "../utils/imageProcess.js";
 import { faststartVideo } from "../utils/videoProcess.js";
 
@@ -56,4 +57,31 @@ export async function store(req, res) {
 
 export function recommendations(req, res) {
   return res.json({ videos: getRecommendations(req.params.videoId) });
+}
+
+export function my(req, res) {
+  return res.json({ videos: listMyVideos(req.user.id) });
+}
+
+export async function update(req, res) {
+  const thumbnailFile = req.files?.thumbnail?.[0];
+  const uploadDir = path.resolve(env.uploadDir);
+
+  if (thumbnailFile) {
+    await processImage(path.join(uploadDir, thumbnailFile.filename), { width: 1280, height: 720, fit: "inside" })
+      .then((out) => { thumbnailFile.filename = path.basename(out); })
+      .catch(() => {});
+  }
+
+  const payload = {
+    ...req.body,
+    ...(thumbnailFile ? { thumbnailUrl: uploadedFileUrl(req, thumbnailFile) } : {})
+  };
+
+  return res.json(updateVideo(req.params.videoId, req.user.id, payload));
+}
+
+export function destroy(req, res) {
+  deleteVideo(req.params.videoId, req.user.id, path.resolve(env.uploadDir));
+  return res.json({ ok: true });
 }

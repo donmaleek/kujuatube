@@ -11,11 +11,7 @@ const primaryItems = [
 const youItems = [
   { label: "History", path: "/history", icon: "history" },
   { label: "Playlists", path: "/playlists", icon: "playlist", authOnly: true },
-  { label: "Your videos", path: "/upload", icon: "yourVideos", authOnly: true },
-  { label: "Downloads", path: "/downloads", icon: "download", authOnly: true },
-  { label: "Courses", path: "/courses", icon: "courses", authOnly: true },
-  { label: "Creator drafts", path: "/admin", icon: "transcript", authOnly: true },
-  { label: "Clips", path: "/search?sort=views", icon: "clip", authOnly: true },
+  { label: "Your videos", path: "/studio", icon: "yourVideos", authOnly: true },
   { label: "Watch Later", path: "/library", icon: "watchLater", authOnly: true },
   { label: "Liked videos", path: "/liked-videos", icon: "like", authOnly: true }
 ];
@@ -23,25 +19,14 @@ const youItems = [
 const exploreItems = [
   { label: "Trending", path: "/trending", icon: "trending" },
   { label: "Music", path: "/search?category=Music", icon: "music" },
-  { label: "Gaming", path: "/search?category=Gaming", icon: "gaming" },
   { label: "News", path: "/search?category=News", icon: "news" },
   { label: "Sports", path: "/search?category=Sports", icon: "trending" },
-  { label: "Courses", path: "/search?category=Education", icon: "courses" },
-  { label: "Podcasts", path: "/search?category=Technology", icon: "podcast" }
-];
-
-const moreItems = [
-  { label: "KujuaTime Premium", path: "/library", icon: "premium" },
-  { label: "KujuaTime Studio", path: "/admin", icon: "yourVideos" },
-  { label: "KujuaTime Music", path: "/search?category=Music", icon: "music" },
-  { label: "KujuaTime Kids", path: "/search?category=Education", icon: "kids" }
+  { label: "Education", path: "/search?category=Education", icon: "courses" },
+  { label: "Technology", path: "/search?category=Technology", icon: "podcast" }
 ];
 
 const supportItems = [
-  { label: "Settings", path: "/profile", icon: "settings" },
-  { label: "Report history", path: "/admin/reports", icon: "report" },
-  { label: "Help", path: "/docs", icon: "help" },
-  { label: "Send feedback", path: "/docs", icon: "feedback" }
+  { label: "Settings", path: "/profile", icon: "settings" }
 ];
 
 const uploadLoginPath = "/login?next=%2Fupload";
@@ -95,11 +80,6 @@ export default function Sidebar({ collapsed = false }) {
         <div className="youtube-sidebar-group">
           <h3>Explore</h3>
           {exploreItems.map(renderItem)}
-        </div>
-
-        <div className="youtube-sidebar-group">
-          <h3>More from KujuaTime</h3>
-          {moreItems.map(renderItem)}
         </div>
 
         <div className="youtube-sidebar-group">{supportItems.map(renderItem)}</div>

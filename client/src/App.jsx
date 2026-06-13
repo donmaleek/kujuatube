@@ -26,6 +26,7 @@ import Signup from "./pages/Auth/Signup.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
 import UserProfile from "./components/user/UserProfile.jsx";
 import Live from "./pages/Live.jsx";
+import CreatorStudio from "./pages/CreatorStudio.jsx";
 import { usePlayer } from "./context/PlayerContext.js";
 
 const routes = {
@@ -52,7 +53,8 @@ const routes = {
   "/signup": Signup,
   "/forgot-password": ForgotPassword,
   "/profile": UserProfile,
-  "/live": Live
+  "/live": Live,
+  "/studio": CreatorStudio
 };
 
 function getStoredSidebarState() {

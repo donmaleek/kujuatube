@@ -19,3 +19,19 @@ export function createVideo(payload) {
 export function getTrendingVideos() {
   return apiRequest("/api/trending");
 }
+
+export function listMyVideos() {
+  return apiRequest("/api/videos/my");
+}
+
+export function updateVideo(videoId, payload) {
+  return apiRequest(`/api/videos/${videoId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+
+export function deleteVideo(videoId) {
+  return apiRequest(`/api/videos/${videoId}`, { method: "DELETE" });
+}

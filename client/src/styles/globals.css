@@ -6501,3 +6501,193 @@ body.tt-feed-active.tt-overlay-hidden .youtube-topic-bar {
   pointer-events: none;
   visibility: hidden;
 }
+
+/* ── Creator Studio ── */
+.studio-empty {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.studio-empty h2 { margin: 0; color: var(--color-text); }
+.studio-empty p  { margin: 0; }
+
+.studio-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.studio-table {
+  border-collapse: collapse;
+  min-width: 640px;
+  width: 100%;
+}
+
+.studio-table th {
+  background: var(--color-surface-raised, var(--color-surface));
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.studio-row {
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+}
+
+.studio-row:hover { background: var(--color-hover, rgba(0,0,0,0.04)); }
+.studio-row:last-child { border-bottom: none; }
+.studio-row.unpublished { opacity: 0.65; }
+
+.studio-row td { padding: 12px 14px; vertical-align: middle; }
+
+.studio-cell-title {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 240px;
+}
+
+.studio-thumb-link { flex-shrink: 0; }
+
+.studio-thumb {
+  border-radius: 6px;
+  height: 56px;
+  object-fit: cover;
+  width: 100px;
+}
+
+.studio-thumb-placeholder {
+  align-items: center;
+  background: var(--color-border);
+  display: flex;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.studio-video-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.studio-video-title {
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.studio-video-title:hover { text-decoration: underline; }
+
+.studio-video-desc {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.studio-category-badge {
+  background: var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  width: fit-content;
+}
+
+.studio-status {
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.studio-status.published  { background: rgba(16,185,129,0.15); color: #10b981; }
+.studio-status.unpublished { background: rgba(156,163,175,0.15); color: #9ca3af; }
+
+.studio-cell-num {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.studio-cell-actions {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.studio-delete-btn  { color: #ef4444; }
+.studio-unpublish-btn { color: var(--color-text-muted); }
+.studio-publish-btn { color: #10b981; }
+
+/* Edit modal */
+.studio-edit-modal { max-width: 520px; }
+
+.studio-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.studio-edit-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 5px;
+}
+
+.studio-edit-form input,
+.studio-edit-form textarea,
+.studio-edit-form select {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.studio-edit-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.studio-edit-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.button.danger {
+  background: #ef4444;
+  color: #fff;
+}
+.button.danger:hover { background: #dc2626; }
+
+@media (max-width: 680px) {
+  .studio-edit-row { grid-template-columns: 1fr; }
+  .studio-table { min-width: 480px; }
+  .studio-cell-num { display: none; }
+}
