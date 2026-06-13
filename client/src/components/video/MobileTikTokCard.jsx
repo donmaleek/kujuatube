@@ -23,7 +23,7 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
   const { user } = useAuth();
 
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [userLike, setUserLike] = useState(null);
   const [likeCount, setLikeCount] = useState(video?.likes || 0);
@@ -66,9 +66,20 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
     if (!vid) return;
 
     if (active) {
+      // Try unmuted first; fall back to muted if browser blocks autoplay with sound
+      vid.muted = false;
       vid.play()
-        .then(() => setPlaying(true))
-        .catch(() => setPlaying(false));
+        .then(() => {
+          setPlaying(true);
+          setMuted(false);
+        })
+        .catch(() => {
+          vid.muted = true;
+          setMuted(true);
+          vid.play()
+            .then(() => setPlaying(true))
+            .catch(() => setPlaying(false));
+        });
     } else {
       vid.pause();
       vid.currentTime = 0;

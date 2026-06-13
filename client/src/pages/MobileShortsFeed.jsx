@@ -7,14 +7,29 @@ export default function MobileShortsFeed({ videos }) {
   const feedRef = useRef(null);
   const cardRefsRef = useRef([]);
 
-  // Prevent the page-content from scrolling while the feed is mounted
+  // Prevent page-content from scrolling and mark body as TikTok-active while feed is mounted
   useEffect(() => {
     const pageContent = document.querySelector(".page-content");
-    if (!pageContent) return;
-    const prev = pageContent.style.overflow;
-    pageContent.style.overflow = "hidden";
-    return () => { pageContent.style.overflow = prev; };
+    if (pageContent) {
+      const prev = pageContent.style.overflow;
+      pageContent.style.overflow = "hidden";
+      var restoreOverflow = () => { pageContent.style.overflow = prev; };
+    }
+    document.body.classList.add("tt-feed-active");
+    return () => {
+      restoreOverflow?.();
+      document.body.classList.remove("tt-feed-active", "tt-overlay-hidden");
+    };
   }, []);
+
+  // Sync TopicBar visibility with overlay state via body class
+  useEffect(() => {
+    if (headerVisible) {
+      document.body.classList.remove("tt-overlay-hidden");
+    } else {
+      document.body.classList.add("tt-overlay-hidden");
+    }
+  }, [headerVisible]);
 
   // IntersectionObserver: mark the most-visible card as active
   useEffect(() => {

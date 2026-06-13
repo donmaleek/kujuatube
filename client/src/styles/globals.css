@@ -6489,3 +6489,15 @@ img.channel-avatar {
   pointer-events: none;
   visibility: hidden;
 }
+
+/* TopicBar hide/show synced to TikTok overlay via body classes */
+body.tt-feed-active .youtube-topic-bar {
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  will-change: opacity;
+}
+
+body.tt-feed-active.tt-overlay-hidden .youtube-topic-bar {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
