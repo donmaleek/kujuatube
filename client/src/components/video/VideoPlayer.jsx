@@ -192,30 +192,73 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
 
   useEffect(() => {
     function onFullscreenChange() {
-      setFullscreenActive(document.fullscreenElement === shellRef.current);
+      setFullscreenActive(
+        document.fullscreenElement === shellRef.current ||
+        document.fullscreenElement === videoRef.current
+      );
     }
-
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
-  // Auto-fullscreen on landscape rotation (mobile only)
+  // Track iOS Safari native fullscreen (webkitEnterFullscreen) separately
   useEffect(() => {
-    const isTouchDevice = navigator.maxTouchPoints > 0;
-    if (!isTouchDevice) return;
+    const vid = videoRef.current;
+    if (!vid) return;
+    const onBegin = () => setFullscreenActive(true);
+    const onEnd   = () => setFullscreenActive(false);
+    vid.addEventListener("webkitbeginfullscreen", onBegin);
+    vid.addEventListener("webkitendfullscreen",   onEnd);
+    return () => {
+      vid.removeEventListener("webkitbeginfullscreen", onBegin);
+      vid.removeEventListener("webkitendfullscreen",   onEnd);
+    };
+  }, [video?.id]);
+
+  // Auto-fullscreen on landscape rotation — hides everything: browser, status bar, notch
+  useEffect(() => {
+    if (navigator.maxTouchPoints < 1) return; // desktop — skip
+
+    function enterNativeFullscreen() {
+      const vid   = videoRef.current;
+      const shell = shellRef.current;
+      const alreadyFS = document.fullscreenElement || vid?.webkitDisplayingFullscreen;
+      if (alreadyFS) return;
+
+      // iOS Safari: webkitEnterFullscreen on <video> is the ONLY API that hides
+      // the status bar, notch, and browser chrome completely on iPhone/iPad.
+      if (typeof vid?.webkitEnterFullscreen === "function") {
+        vid.webkitEnterFullscreen();
+        return;
+      }
+
+      // Android Chrome / modern browsers:
+      // { navigationUI: "hide" } asks Chrome to suppress its own navigation bar.
+      // Calling on the shell keeps custom controls visible inside fullscreen.
+      shell?.requestFullscreen?.({ navigationUI: "hide" })
+        .catch(() =>
+          vid?.requestFullscreen?.({ navigationUI: "hide" }).catch(() => {})
+        );
+    }
+
+    function exitNativeFullscreen() {
+      const vid = videoRef.current;
+      if (vid?.webkitDisplayingFullscreen) {
+        vid.webkitExitFullscreen?.();
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    }
 
     function onOrientationChange() {
       const isLandscape = screen.orientation
         ? screen.orientation.type.startsWith("landscape")
         : Math.abs(window.orientation ?? 0) === 90;
 
-      if (isLandscape && !document.fullscreenElement) {
-        shellRef.current?.requestFullscreen?.().catch(() => {
-          // Safari fallback
-          videoRef.current?.webkitEnterFullscreen?.();
-        });
-      } else if (!isLandscape && document.fullscreenElement === shellRef.current) {
-        document.exitFullscreen?.().catch(() => {});
+      if (isLandscape) {
+        enterNativeFullscreen();
+      } else {
+        exitNativeFullscreen();
       }
     }
 
@@ -414,18 +457,35 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
   }
 
   async function toggleFullscreen() {
-    try {
-      if (!document.fullscreenElement) {
-        await shellRef.current?.requestFullscreen?.();
+    const vid   = videoRef.current;
+    const shell = shellRef.current;
+
+    // Are we already in fullscreen?
+    const inFS = document.fullscreenElement || vid?.webkitDisplayingFullscreen;
+
+    if (inFS) {
+      // Exit — iOS uses webkitExitFullscreen on the video; others use document API
+      if (vid?.webkitDisplayingFullscreen) {
+        vid.webkitExitFullscreen?.();
       } else {
-        await document.exitFullscreen?.();
+        await document.exitFullscreen?.().catch(() => {});
       }
+      return;
+    }
+
+    // iOS Safari: webkitEnterFullscreen on <video> is the only API that hides
+    // the status bar and browser chrome completely on iPhone/iPad.
+    if (typeof vid?.webkitEnterFullscreen === "function") {
+      vid.webkitEnterFullscreen();
+      return;
+    }
+
+    // Android Chrome / modern browsers: { navigationUI: "hide" } suppresses
+    // the nav bar so only the video fills the screen.
+    try {
+      await shell?.requestFullscreen?.({ navigationUI: "hide" });
     } catch {
-      try {
-        videoRef.current?.webkitEnterFullscreen?.();
-      } catch {
-        // Fullscreen is browser-controlled; leave the player unchanged if blocked.
-      }
+      await vid?.requestFullscreen?.({ navigationUI: "hide" }).catch(() => {});
     }
   }
 
