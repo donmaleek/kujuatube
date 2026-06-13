@@ -80,8 +80,8 @@ def main():
     ), check=False)
 
     print("Rebuilding and restarting containers...")
-    run(client, f"cd {REMOTE_DIR} && docker compose -f docker-compose.deploy.yml build --no-cache client server 2>&1 | tail -20")
-    run(client, f"cd {REMOTE_DIR} && docker compose -f docker-compose.deploy.yml up -d --force-recreate client server")
+    run(client, f"cd {REMOTE_DIR} && docker compose -f docker-compose.deploy.yml build --no-cache client server nginx 2>&1 | tail -20")
+    run(client, f"cd {REMOTE_DIR} && docker compose -f docker-compose.deploy.yml up -d --force-recreate client server nginx")
 
     print("Waiting for containers...")
     run(client, "sleep 4")
