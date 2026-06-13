@@ -11,15 +11,16 @@ function fmtCount(n) {
   return String(n);
 }
 
-function TikBtn({ icon, label, active, onClick, size = 26 }) {
+function TikBtn({ icon, label, active, onClick, size = 26, burst = false }) {
   return (
     <button
       type="button"
-      className={active ? "tt-btn active" : "tt-btn"}
+      className={["tt-btn", active ? "active" : "", burst ? "tt-btn-pop" : ""].filter(Boolean).join(" ")}
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}
     >
+      {burst && <span className="tt-like-burst" aria-hidden="true">♥</span>}
       <span className="tt-icon">
         <YoutubeIcon name={icon} size={size} />
       </span>
@@ -32,6 +33,7 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
   const { user } = useAuth();
   const [userLike, setUserLike] = useState(null);
   const [likeCount, setLikeCount] = useState(video?.likes || 0);
+  const [likeAnim, setLikeAnim] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [shared, setShared] = useState(false);
@@ -93,6 +95,10 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
       await likeVideo(video.id).catch(() => {});
       if (userLike === null) setLikeCount((c) => c + 1);
       setUserLike(1);
+      // Trigger heart burst animation
+      setLikeAnim(false);
+      requestAnimationFrame(() => setLikeAnim(true));
+      setTimeout(() => setLikeAnim(false), 700);
     }
   }
 
@@ -145,6 +151,7 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
         label={likeCount > 0 ? fmtCount(likeCount) : "Like"}
         active={userLike === 1}
         onClick={handleLike}
+        burst={likeAnim}
       />
       <TikBtn
         icon="comment"

@@ -199,6 +199,34 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
+  // Auto-fullscreen on landscape rotation (mobile only)
+  useEffect(() => {
+    const isTouchDevice = navigator.maxTouchPoints > 0;
+    if (!isTouchDevice) return;
+
+    function onOrientationChange() {
+      const isLandscape = screen.orientation
+        ? screen.orientation.type.startsWith("landscape")
+        : Math.abs(window.orientation ?? 0) === 90;
+
+      if (isLandscape && !document.fullscreenElement) {
+        shellRef.current?.requestFullscreen?.().catch(() => {
+          // Safari fallback
+          videoRef.current?.webkitEnterFullscreen?.();
+        });
+      } else if (!isLandscape && document.fullscreenElement === shellRef.current) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    }
+
+    screen.orientation?.addEventListener("change", onOrientationChange);
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => {
+      screen.orientation?.removeEventListener("change", onOrientationChange);
+      window.removeEventListener("orientationchange", onOrientationChange);
+    };
+  }, []);
+
   useEffect(() => {
     const videoNode = videoRef.current;
     if (!videoNode) return undefined;

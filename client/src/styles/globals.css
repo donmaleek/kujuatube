@@ -4955,6 +4955,19 @@ img.channel-avatar {
 }
 
 /* Action button — icon circle + label */
+@keyframes tt-like-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
+  65%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tt-like-float {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.7); }
+  25%  { opacity: 1; transform: translate(-50%, -80%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -200%) scale(2); }
+}
+
 .tt-btn {
   align-items: center;
   background: none;
@@ -4964,6 +4977,7 @@ img.channel-avatar {
   flex-direction: column;
   gap: 5px;
   padding: 0;
+  position: relative;
   width: 100%;
 }
 
@@ -4992,6 +5006,25 @@ img.channel-avatar {
 
 .tt-btn.active .tt-icon {
   background: #7c3aed;
+}
+
+.tt-btn-pop .tt-icon {
+  animation: tt-like-pop 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  background: #ff2d55 !important;
+  color: #fff;
+}
+
+.tt-like-burst {
+  animation: tt-like-float 0.65s ease-out forwards;
+  color: #ff2d55;
+  font-size: 34px;
+  left: 50%;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
 }
 
 .tt-label {
