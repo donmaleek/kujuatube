@@ -3,6 +3,7 @@ import MobileTikTokCard from "../components/video/MobileTikTokCard.jsx";
 
 export default function MobileShortsFeed({ videos }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const feedRef = useRef(null);
   const cardRefsRef = useRef([]);
 
@@ -48,7 +49,7 @@ export default function MobileShortsFeed({ videos }) {
   return (
     <div className="tt-feed" ref={feedRef}>
       {/* "For You" header overlay */}
-      <div className="tt-feed-header" aria-hidden="true">
+      <div className={headerVisible ? "tt-feed-header" : "tt-feed-header overlay-hidden"} aria-hidden="true">
         <span className="tt-feed-header-tab active">For You</span>
       </div>
 
@@ -58,6 +59,7 @@ export default function MobileShortsFeed({ videos }) {
           video={video}
           active={index === activeIndex}
           preloadNext={index === activeIndex + 1}
+          onOverlayChange={index === activeIndex ? setHeaderVisible : undefined}
           ref={(el) => { cardRefsRef.current[index] = el; }}
         />
       ))}

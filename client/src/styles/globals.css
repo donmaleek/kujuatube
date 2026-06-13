@@ -6469,3 +6469,23 @@ img.channel-avatar {
   display: inline-block;
   margin-top: 12px;
 }
+
+/* ── Overlay auto-hide: fade out UI while video plays ── */
+.tt-card-actions,
+.tt-card-info,
+.tt-unmute-hint,
+.tt-card-progress-wrap,
+.tt-feed-header {
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  will-change: opacity;
+}
+
+.tt-card-actions.overlay-hidden,
+.tt-card-info.overlay-hidden,
+.tt-unmute-hint.overlay-hidden,
+.tt-card-progress-wrap.overlay-hidden,
+.tt-feed-header.overlay-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}

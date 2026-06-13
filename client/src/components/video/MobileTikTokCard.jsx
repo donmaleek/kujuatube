@@ -11,16 +11,20 @@ function fmtCount(n) {
   return String(n);
 }
 
+const OVERLAY_HIDE_DELAY = 3000;
+
 const MobileTikTokCard = forwardRef(function MobileTikTokCard(
-  { video, active, preloadNext = false },
+  { video, active, preloadNext = false, onOverlayChange },
   ref
 ) {
   const videoRef = useRef(null);
   const tapTimerRef = useRef(null);
+  const hideTimerRef = useRef(null);
   const { user } = useAuth();
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [overlayVisible, setOverlayVisible] = useState(true);
   const [userLike, setUserLike] = useState(null);
   const [likeCount, setLikeCount] = useState(video?.likes || 0);
   const [subscribed, setSubscribed] = useState(false);
@@ -73,8 +77,40 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
     }
   }, [active]);
 
-  // Cleanup timer on unmount
-  useEffect(() => () => clearTimeout(tapTimerRef.current), []);
+  // Auto-hide overlay when playing; show it when paused or inactive
+  useEffect(() => {
+    if (active && playing) {
+      scheduleOverlayHide();
+    } else {
+      revealOverlay();
+    }
+  }, [active, playing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Notify parent when overlay visibility changes (for "For You" header sync)
+  useEffect(() => {
+    onOverlayChange?.(overlayVisible);
+  }, [overlayVisible, onOverlayChange]);
+
+  // Reset overlay to visible when card becomes active
+  useEffect(() => {
+    if (active) revealOverlay();
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cleanup timers on unmount
+  useEffect(() => () => {
+    clearTimeout(tapTimerRef.current);
+    clearTimeout(hideTimerRef.current);
+  }, []);
+
+  function revealOverlay() {
+    clearTimeout(hideTimerRef.current);
+    setOverlayVisible(true);
+  }
+
+  function scheduleOverlayHide() {
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setOverlayVisible(false), OVERLAY_HIDE_DELAY);
+  }
 
   function redirectToLogin() {
     window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
@@ -85,14 +121,23 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
     const vid = videoRef.current;
     if (!vid) return;
 
+    // If overlay is hidden, first tap just reveals it (no play/pause change)
+    if (!overlayVisible) {
+      revealOverlay();
+      if (!vid.paused) scheduleOverlayHide();
+      return;
+    }
+
     if (vid.paused) {
       await vid.play().catch(() => {});
       setPlaying(true);
       flashTap("play");
+      scheduleOverlayHide();
     } else {
       vid.pause();
       setPlaying(false);
       flashTap("pause");
+      revealOverlay();
     }
   }
 
@@ -193,8 +238,8 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
       {/* Muted hint — top-center */}
       {muted && active && (
         <button
-          className="tt-unmute-hint"
-          onClick={(e) => { e.stopPropagation(); setMuted(false); }}
+          className={overlayVisible ? "tt-unmute-hint" : "tt-unmute-hint overlay-hidden"}
+          onClick={(e) => { e.stopPropagation(); setMuted(false); revealOverlay(); scheduleOverlayHide(); }}
           type="button"
         >
           <YoutubeIcon name="muted" size={16} />
@@ -203,7 +248,7 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
       )}
 
       {/* ── Right-column actions ── */}
-      <div className="tt-card-actions">
+      <div className={overlayVisible ? "tt-card-actions" : "tt-card-actions overlay-hidden"}>
         {/* Creator avatar + follow dot */}
         <div className="tt-card-creator">
           <a
@@ -297,7 +342,7 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
       </div>
 
       {/* ── Bottom-left info strip ── */}
-      <div className="tt-card-info">
+      <div className={overlayVisible ? "tt-card-info" : "tt-card-info overlay-hidden"}>
         <a
           className="tt-card-username"
           href={`/channel?id=${channelId}`}
@@ -322,7 +367,7 @@ const MobileTikTokCard = forwardRef(function MobileTikTokCard(
       </div>
 
       {/* ── Thin progress bar ── */}
-      <div className="tt-card-progress-wrap">
+      <div className={overlayVisible ? "tt-card-progress-wrap" : "tt-card-progress-wrap overlay-hidden"}>
         <div className="tt-card-progress-fill" style={{ width: `${progress}%` }} />
       </div>
     </div>
