@@ -95,6 +95,8 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
   const [fitMode, setFitMode] = useState(() => getStoredPlayerPreference("kujuatime-fit-mode", "contain"));
   const [naturalAspect, setNaturalAspect] = useState({ width: 16, height: 9 });
   const [mediaDuration, setMediaDuration] = useState(0);
+  const [buffering, setBuffering] = useState(false);
+  const [bufferedProgress, setBufferedProgress] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
   const [ambient, setAmbient] = useState(true);
   const [loop, setLoop] = useState(playbackState.loop ?? true);
@@ -439,6 +441,13 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
     currentTimeRef.current = nextTime;
   }
 
+  function updateBuffered(event) {
+    const el = event.currentTarget;
+    if (!el.buffered.length || !el.duration) return;
+    const pct = (el.buffered.end(el.buffered.length - 1) / el.duration) * 100;
+    setBufferedProgress(Math.min(100, pct));
+  }
+
   function handleMediaEnded() {
     if (!loop && !autoplay) setPlaying(false);
   }
@@ -488,8 +497,13 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
           onClick={togglePlay}
           onDurationChange={updateMediaMetadata}
           onEnded={handleMediaEnded}
-          onPause={() => setPlaying(false)}
-          onPlay={() => setPlaying(true)}
+          onPause={() => { setPlaying(false); setBuffering(false); }}
+          onPlay={() => { setPlaying(true); setBuffering(false); }}
+          onPlaying={() => setBuffering(false)}
+          onWaiting={() => setBuffering(true)}
+          onStalled={() => setBuffering(true)}
+          onCanPlay={() => setBuffering(false)}
+          onProgress={updateBuffered}
           onTimeUpdate={updateMediaTime}
           onLoadedMetadata={updateMediaMetadata}
         />
@@ -498,6 +512,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
           <span className="player-preview-label">{quality} preview</span>
         </button>
       )}
+      {buffering ? <div className="player-buffering-spinner" aria-label="Buffering" /> : null}
       <button className={playing ? "player-center-button playing" : "player-center-button"} onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} type="button">
         <YoutubeIcon name={playing ? "pause" : "play"} size={42} />
       </button>
@@ -520,7 +535,7 @@ export default function VideoPlayer({ video, theater = false, onToggleTheater, a
             max="100"
             min="0"
             onChange={(event) => seekTo(event.target.value)}
-            style={{ "--progress": `${progress}%` }}
+            style={{ "--progress": `${progress}%`, "--buffered": `${bufferedProgress}%` }}
             type="range"
             value={progress || 0}
           />

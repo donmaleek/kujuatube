@@ -1,4 +1,4 @@
-export default function Avatar({ src, name, className = "" }) {
+export default function Avatar({ src, name, className = "", loading = "lazy" }) {
   const initial = (name || "?")[0].toUpperCase();
   if (src) {
     return (
@@ -6,8 +6,9 @@ export default function Avatar({ src, name, className = "" }) {
         src={src}
         alt={name || ""}
         className={`avatar ${className}`.trim()}
+        loading={loading}
+        decoding="async"
         onError={(e) => {
-          // Image URL broken — swap to an initials span in-place
           const span = document.createElement("span");
           span.className = e.currentTarget.className;
           span.textContent = initial;

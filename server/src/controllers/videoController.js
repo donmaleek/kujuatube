@@ -1,7 +1,10 @@
+import path from "node:path";
 import { createVideo, getVideoById, listVideos } from "../services/videoProcessingService.js";
 import { getRecommendations } from "../services/recommendationService.js";
 import { env } from "../config/env.js";
 import { sendCreated } from "../utils/http.js";
+import { processImage } from "../utils/imageProcess.js";
+import { faststartVideo } from "../utils/videoProcess.js";
 
 function resolveBaseUrl(req) {
   // Prefer explicit env var; fall back to public-facing host from proxy headers
@@ -26,9 +29,22 @@ export function show(req, res) {
   return res.json(getVideoById(req.params.videoId));
 }
 
-export function store(req, res) {
+export async function store(req, res) {
   const videoFile = req.files?.video?.[0];
   const thumbnailFile = req.files?.thumbnail?.[0];
+  const uploadDir = path.resolve(env.uploadDir);
+
+  // Run both optimizations in parallel — thumbnail resize and video faststart
+  await Promise.all([
+    thumbnailFile
+      ? processImage(path.join(uploadDir, thumbnailFile.filename), { width: 1280, height: 720, fit: "inside" })
+          .then((out) => { thumbnailFile.filename = path.basename(out); })
+      : Promise.resolve(),
+    videoFile
+      ? faststartVideo(path.join(uploadDir, videoFile.filename))
+      : Promise.resolve()
+  ]);
+
   const payload = {
     ...req.body,
     videoUrl: uploadedFileUrl(req, videoFile) || req.body.videoUrl,

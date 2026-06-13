@@ -9,12 +9,18 @@ export default function VideoCard({ video, compact = false, reason = "" }) {
   const hasPreviewVideo = Boolean(video.videoUrl);
 
   async function startPreview() {
-    setPreviewing(true);
     const previewNode = previewRef.current;
     if (!previewNode) return;
 
-    previewNode.currentTime = Math.min(previewNode.duration || 0, 0.01);
+    // Lazy-load src on first hover — avoids 20 simultaneous metadata
+    // requests flooding the network before the Watch page video loads.
+    if (!previewNode.src || previewNode.src === window.location.href) {
+      previewNode.src = video.videoUrl;
+      previewNode.load();
+    }
+
     previewNode.muted = true;
+    setPreviewing(true);
 
     try {
       await previewNode.play();
@@ -27,7 +33,6 @@ export default function VideoCard({ video, compact = false, reason = "" }) {
     setPreviewing(false);
     const previewNode = previewRef.current;
     if (!previewNode) return;
-
     previewNode.pause();
     previewNode.currentTime = 0;
   }
@@ -36,7 +41,7 @@ export default function VideoCard({ video, compact = false, reason = "" }) {
     <article className={[compact ? "video-card compact" : "video-card", previewing ? "is-previewing" : ""].filter(Boolean).join(" ")}>
       <a className="thumbnail-link" href={`/watch?id=${video.id}`} onMouseEnter={startPreview} onMouseLeave={stopPreview} onFocus={startPreview} onBlur={stopPreview}>
         {video.thumbnailUrl ? (
-          <img src={video.thumbnailUrl} alt={video.title} loading="lazy" className="thumbnail" />
+          <img src={video.thumbnailUrl} alt={video.title} loading="lazy" decoding="async" className="thumbnail" />
         ) : (
           <span className="thumbnail-auto" data-cat={video.category || "Other"}>
             <span className="thumbnail-auto-initial">{(video.channelName || video.ownerName || "K")[0].toUpperCase()}</span>
@@ -50,9 +55,7 @@ export default function VideoCard({ video, compact = false, reason = "" }) {
             loop
             muted
             playsInline
-            preload="metadata"
             ref={previewRef}
-            src={video.videoUrl}
           />
         ) : (
           <span className="thumbnail-preview-fallback" aria-hidden="true" />

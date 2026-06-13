@@ -125,7 +125,7 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
       <div className="tt-creator">
         <a className="tt-avatar" href={`/channel?id=${channelId}`} title={channelName}>
           {channelAvatar
-            ? <img src={channelAvatar} alt={channelName} className="tt-avatar-img" />
+            ? <img src={channelAvatar} alt={channelName} className="tt-avatar-img" decoding="async" />
             : (channelName || "K")[0].toUpperCase()}
         </a>
         <button
