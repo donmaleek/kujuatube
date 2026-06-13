@@ -39,6 +39,7 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
 
   const channelId = video?.channelId || video?.userId;
   const channelName = video?.channelName || video?.ownerName || "";
+  const channelAvatar = video?.channelAvatarUrl || "";
   const commentCount = video?.commentCount || 0;
 
   useEffect(() => {
@@ -123,7 +124,9 @@ export default function VideoTikTokActions({ video, onScrollToComments }) {
       {/* Creator avatar + follow dot */}
       <div className="tt-creator">
         <a className="tt-avatar" href={`/channel?id=${channelId}`} title={channelName}>
-          {(channelName || "K")[0].toUpperCase()}
+          {channelAvatar
+            ? <img src={channelAvatar} alt={channelName} className="tt-avatar-img" />
+            : (channelName || "K")[0].toUpperCase()}
         </a>
         <button
           className={subscribed ? "tt-follow subscribed" : "tt-follow"}

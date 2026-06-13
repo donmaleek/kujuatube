@@ -4883,6 +4883,13 @@ img.channel-avatar {
   width: 52px;
 }
 
+.tt-avatar-img {
+  border-radius: 50%;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
 /* Follow "+" dot — overlaps bottom-center of avatar */
 .tt-follow {
   align-items: center;
